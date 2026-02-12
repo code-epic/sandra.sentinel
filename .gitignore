@@ -1,0 +1,25 @@
+# Rust Build Artifacts
+target/
+migracion/
+**/*.rs.bk
+
+# Generated Data Exports
+*.csv
+*.xlsx
+*.xls
+
+# OS Files (Mac/Windows)
+.DS_Store
+Thumbs.db
+
+# IDE / Editor Settings
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+
+# Logs and Temporary files
+*.log
+tmp/
+temp/

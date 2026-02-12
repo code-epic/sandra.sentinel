@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package sandra.sentinel.v1;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/code-epic/sandra/sentinel/v1;sentinel";
+
+// --- SERVICIOS ---
+
+// SentinelDynamicService: Servicio para respuestas dinámicas (metadata + filas)
+service SentinelDynamicService {
+  rpc ExecuteDynamic(DynamicRequest) returns (stream DynamicResponse);
+}
+
+
+// DynamicRequest: Petición para el servicio dinámico
+message DynamicRequest {
+  string funcion = 1;       
+  string parametros = 2;   
+  string valores = 3;
+}
+
+// DynamicResponse: Respuesta estructurada dinámica
+message DynamicResponse {
+  repeated ColumnDef columns = 1;           // Definición de columnas (metadata)
+  bytes rows = 2; // Filas serializadas como bloque JSON bytes ([]byte)
+  int32 total_rows = 3;                     // Total de registros
+  string execution_time = 4;                // Tiempo de ejecución
+}
+
+message ColumnDef {
+  string name = 1;
+  string type = 2; // "string", "int", "double", "bool"
+}
