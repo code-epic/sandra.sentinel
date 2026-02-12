@@ -1,4 +1,4 @@
-# 🛡️ Sandra Sentinel
+# Sandra Sentinel
 
 **Sandra Sentinel** es un núcleo de procesamiento de alto rendimiento desarrollado en **Rust**, diseñado para la auditoría, fusión computacional y proyección de nóminas masivas en entornos jerárquicos complejos.
 
@@ -6,7 +6,7 @@ Actúa como un **auditor determinista**: consume datos crudos de fuentes legadas
 
 ---
 
-## 🏛️ Arquitectura
+## Arquitectura
 
 Sentinel está diseñado bajo principios de _Zero-Cost Abstractions_ y seguridad de memoria (_Memory Safety_), operando bajo un patrón de **Arquitectura Hexagonal (Ports & Adapters)**. El núcleo lógico (`core`) está totalmente desacoplado de las interfaces de entrada (gRPC Streams) y salida (CLI/CSV).
 
@@ -19,7 +19,7 @@ Sentinel está diseñado bajo principios de _Zero-Cost Abstractions_ y seguridad
 
 ---
 
-## ⚙️ El Motor de Cálculo (Computation Engine)
+## El Motor de Cálculo (Computation Engine)
 
 El corazón de Sentinel es su **Motor de Cálculo Estocástico-Determinista**. A diferencia de los sistemas tradicionales que realizan consultas SQL complejas (JOINs costosos), Sentinel descarga los datos "crudos" y realiza la lógica de negocio en la memoria de la aplicación (`In-Memory Computing`), aprovechando la velocidad de la CPU moderna y evitando la latencia de la base de datos.
 
@@ -33,7 +33,7 @@ El motor trabaja sobre tres entidades fundamentales que se fusionan para crear u
 
 ### 2. Algoritmo de Fusión (In-Memory Hash Join)
 
-Para unir estas entidades masivamente (100k+ registros) en milisegundos, Sentinel implementa una variante del algoritmo **Hash Join**:
+Para unir estas entidades masivamente (500k+ registros) en milisegundos, Sentinel implementa una variante del algoritmo **Hash Join**:
 
 - **Fase de Indexación (Build Phase):**
   - Se cargan las _Entidades Base_ y _Movimientos_ en memoria.
@@ -54,9 +54,9 @@ El motor no confía en los cálculos heredados; los recalcula al vuelo.
 
 ---
 
-## ⚡ Ingeniería de Rendimiento (Pipeline Asíncrono)
+## Ingeniería de Rendimiento (Pipeline Asíncrono)
 
-Uno de los logros técnicos más notables de esta implementación es su capacidad para procesar **~100,000+ registros complejos en segundos**. Esto se logra mediante una arquitectura de tubería (Pipeline) que elimina los tiempos muertos.
+Uno de los logros técnicos más notables de esta implementación es su capacidad para procesar **~500,000+ registros complejos en segundos**. Esto se logra mediante una arquitectura de tubería (Pipeline) que elimina los tiempos muertos.
 
 ### El Problema "Stop-and-Wait" (Superado)
 
@@ -82,7 +82,7 @@ Sentinel implementa un flujo continuo:
 
 ---
 
-## 🔮 Proyección y Auditoría
+## Proyección y Auditoría
 
 El resultado final no es solo una copia de datos, sino una **Nómina Auditada**. Al recalcular atributos críticos (como la antigüedad o el derecho a primas) basándose en la data cruda, Sentinel actúa como un sistema de detección de anomalías:
 
