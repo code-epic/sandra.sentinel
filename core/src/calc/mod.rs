@@ -1,3 +1,4 @@
+pub mod motor;
 use crate::kernel::logica::memoria::{Base, Directiva};
 use chrono::{Datelike, Local, NaiveDate};
 

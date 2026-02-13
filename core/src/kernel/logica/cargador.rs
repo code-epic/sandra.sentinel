@@ -1,4 +1,5 @@
 use super::memoria::*;
+use crate::kernel::logica::logger;
 use crate::kernel::sandra::sentinel_dynamic_service_client::SentinelDynamicServiceClient;
 use crate::kernel::sandra::DynamicRequest;
 use tonic::transport::Channel;
@@ -31,6 +32,12 @@ impl Cargador {
         self.fetch_stream("IPSFA_CDirectiva").await
     }
 
+    pub async fn cargar_primas_funciones(
+        &mut self,
+    ) -> Result<Vec<PrimaFuncion>, Box<dyn std::error::Error + Send + Sync>> {
+        self.fetch_stream("IPSFA_CPrimasFunciones").await
+    }
+
     pub async fn cargar_conceptos(
         &mut self,
     ) -> Result<Vec<Concepto>, Box<dyn std::error::Error + Send + Sync>> {
@@ -47,6 +54,7 @@ impl Cargador {
     pub async fn cargar_base(
         &mut self,
         directivas: &Vec<Directiva>,
+        engine: &crate::calc::motor::SentinelEngine,
     ) -> Result<Vec<Base>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBase";
         println!("🚀 [INIT] Iniciando carga inteligente para: '{}'", funcion);
@@ -70,7 +78,7 @@ impl Cargador {
                 match serde_json::from_slice::<Vec<Base>>(&msg.rows) {
                     Ok(items) => {
                         for mut item in items {
-                            // 🔥 CÁLCULO AL VUELO: TIEMPO + SUELDO
+                            // 1. 🔥 CÁLCULO PREVIO: TIEMPO + SUELDO BASE (Requisito para el motor)
                             crate::calc::procesar_registro_base(&mut item, directivas);
                             results.push(item);
                         }
@@ -83,12 +91,74 @@ impl Cargador {
                 }
             }
 
+            // 2. ⚡️ INVOCACIÓN DEL MOTOR SENTINEL (Cálculo de Nómina Masivo)
             println!(
-                "✅ [DONE] '{}' completado y calculado en {:?}. Total: {} registros en {} lotes.",
+                "⚙️ [SentinelEngine] Procesando nómina para {} registros...",
+                results.len()
+            );
+
+            // El motor usa Rayon internamente para calcular en paralelo
+            let calculos = engine.calcular_nomina(&results);
+
+            // 3. 💾 FUSIÓN DE RESULTADOS (Map-Reduce: Volcar cálculos al struct Base)
+            // Optimizamos creando un mapa temporal para acceso rápido por patrón/key
+            let mapa_calculos: std::collections::HashMap<_, _> = calculos.into_iter().collect();
+
+            let mut match_count = 0;
+            let mut count_zeros_primas = 0;
+            for base in &mut results {
+                // Usamos patterns como clave de enlace según tu lógica en motor.rs
+                if let Some(valores) = mapa_calculos.get(&base.patterns) {
+                    match_count += 1;
+
+                    // A) ALMACENAMIENTO DINÁMICO (Único y Definitivo)
+                    base.calculos = Some(valores.clone());
+
+                    // 2. Calcular Total Asignaciones
+                    let sum_primas: f64 = valores.values().sum();
+                    base.total_asignaciones = base.sueldo_base + sum_primas;
+
+                    // Integridad: Si tiene sueldo pero 0 primas, es sospechoso
+                    if base.sueldo_base > 0.0 && sum_primas == 0.0 {
+                        count_zeros_primas += 1;
+                    }
+                }
+            }
+
+            if count_zeros_primas > 0 {
+                logger::log_warn(
+                    "CALCULO",
+                    &format!(
+                        "Atención: {} registros tienen Sueldo Base pero 0.0 en Primas calculadas.",
+                        count_zeros_primas
+                    ),
+                );
+            }
+
+            println!(
+                "✅ [DONE] '{}' completado. Base: {:?} | Motor: {} procesados. Total tiempo: {:?}",
+                funcion,
+                start_time.elapsed(),
+                match_count,
+                start_time.elapsed()
+            );
+            logger::log_info(
+                "CARGA",
+                &format!(
+                    "'{}' completado. Base: {:?} registros. Motor: {} procesados. Tiempo: {:?}",
+                    funcion,
+                    results.len(),
+                    match_count,
+                    start_time.elapsed()
+                ),
+            );
+            // Telemetría
+            crate::kernel::logica::telemetria::record(
+                "CARGA",
                 funcion,
                 start_time.elapsed(),
                 results.len(),
-                chunks
+                &format!("Lotes: {}", chunks),
             );
             Ok(results)
         } else {
@@ -137,6 +207,7 @@ impl Cargador {
             let size_aprox = 120_000;
             let mut results = Vec::with_capacity(size_aprox);
             let mut chunks = 0;
+            let mut huerfanos_count = 0; // Contador de integridad
 
             let mut t_last = std::time::Instant::now();
             let mut net_time = std::time::Duration::new(0, 0);
@@ -184,6 +255,8 @@ impl Cargador {
                             if !item.patterns.is_empty() {
                                 if let Some(base_encontrada) = map_base.get(&item.patterns) {
                                     item.base = (*base_encontrada).clone();
+                                } else {
+                                    huerfanos_count += 1;
                                 }
                             }
 
@@ -201,13 +274,29 @@ impl Cargador {
                 }
             }
 
-            println!(
-                "✅ [DONE] '{}' completado en {:?}. Total: {} registros en {} lotes.",
+            if huerfanos_count > 0 {
+                logger::log_warn("INTEGRIDAD", &format!("Detectados {} beneficiarios sin registro Base asociado (Posible inconsistencia)", huerfanos_count));
+            }
+
+            let msg_done = format!(
+                "'{}' completado en {:?}. Total: {} registros en {} lotes.",
                 funcion,
                 start_time.elapsed(),
                 results.len(),
                 chunks
             );
+            println!("✅ [DONE] {}", msg_done);
+            logger::log_info("CARGA", &msg_done);
+
+            // Telemetría
+            crate::kernel::logica::telemetria::record(
+                "CARGA",
+                funcion,
+                start_time.elapsed(),
+                results.len(),
+                &format!("Lotes: {}", chunks),
+            );
+
             Ok(results)
         } else {
             Err("Cliente no conectado".into())
@@ -241,6 +330,8 @@ impl Cargador {
             let mut results = Vec::new();
             let mut chunks = 0;
 
+            let mut json_error_logged = false;
+
             while let Some(msg) = stream.message().await? {
                 chunks += 1;
                 // msg.rows es Vec<u8> (JSON Array)
@@ -253,6 +344,13 @@ impl Cargador {
                         results.extend(items);
                     }
                     Err(e) => {
+                        if !json_error_logged {
+                            logger::log_error(
+                                "JSON",
+                                &format!("Error deserializando batch en '{}': {}", funcion, e),
+                            );
+                            json_error_logged = true;
+                        }
                         eprintln!(
                             "⚠️ [WARN] Error deserializando batch JSON en '{}': {}",
                             funcion, e
@@ -260,14 +358,34 @@ impl Cargador {
                     }
                 }
             }
+
+            if results.is_empty() {
+                logger::log_warn(
+                    "DATA",
+                    &format!("Servicio '{}' devolvió 0 registros", funcion),
+                );
+            }
+
             let total_elapsed = start_time.elapsed();
-            println!(
-                "✅ [DONE] '{}' completado en {:?}. Total: {} registros en {} lotes.",
+            let msg_done = format!(
+                "'{}' completado en {:?}. Total: {} registros en {} lotes.",
                 funcion,
                 total_elapsed,
                 results.len(),
                 chunks
             );
+            println!("✅ [DONE] {}", msg_done);
+            logger::log_info("CARGA", &msg_done);
+
+            // Telemetría
+            crate::kernel::logica::telemetria::record(
+                "CARGA",
+                funcion,
+                total_elapsed,
+                results.len(),
+                &format!("Lotes: {}", chunks),
+            );
+
             Ok(results)
         } else {
             println!(

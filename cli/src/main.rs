@@ -3,7 +3,12 @@ use sandra_core::System;
 
 #[derive(Parser)]
 #[command(name = "sandra")]
-#[command(about = "CLI para Sandra Sentinel", long_about = None)]
+#[command(author = "Equipo de Desarrollo Sandra")]
+#[command(version = "1.0.0")]
+#[command(
+    about = "Sandra Sentinel - Motor de Cálculo de Nómina Militar",
+    long_about = "Sandra Sentinel es el núcleo de procesamiento de nómina desarrollado en Rust.\n\nPermite la carga masiva de datos, ejecución de fórmulas dinámicas (Rhai) y exportación de resultados.\nDiseñado para alta concurrencia y tolerancia a fallos."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -11,24 +16,45 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Inicia el Core y sus módulos
+    /// Inicia el ciclo de carga y cálculo de nómina.
+    #[command(
+        long_about = "Inicia el Core del sistema, conecta con Sandra Server y ejecuta el ciclo de nómina.\n\nEjemplos:\n  sandra start -x --log --sensors\n  sandra start --execute"
+    )]
     Start {
-        #[arg(short = 'x', long)]
+        /// Ejecuta el ciclo de carga inmediatamente al iniciar.
+        #[arg(short = 'x', long = "execute")]
         execute: bool,
+
+        /// Habilita el registro de eventos en archivo ('sandra_sentinel.log').
+        #[arg(long)]
+        log: bool,
+
+        /// Activa la recolección de métricas de rendimiento y genera reporte final (-s).
+        #[arg(short = 's', long = "sensors")]
+        sensors: bool,
     },
-    /// Procesa cálculos en lote
+
+    /// Procesa cálculos de nómina en lote desde un archivo local (Offline).
+    #[command(
+        long_about = "Permite procesar un archivo JSON local con beneficiarios sin conectar al servidor.\nÚtil para pruebas de fórmulas o reprocesos manuales."
+    )]
     Lote {
+        /// Ruta al archivo JSON de entrada.
         #[arg(short, long)]
         archivo: Option<String>,
     },
-    /// Monitor de salud del sistema
+
+    /// Muestra el estado de salud del sistema y recursos.
     Monitor,
-    /// Valida claves y accesos
+
+    /// Valida claves de acceso y permisos de seguridad (Herramienta admin).
     Validar {
+        /// Clave o Token a validar.
         #[arg(short, long)]
         clave: String,
     },
-    /// Muestra la versión del sistema
+
+    /// Muestra la versión detallada del compilado.
     Version,
 }
 
@@ -37,14 +63,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Some(Commands::Start { execute }) => {
+        Some(Commands::Start {
+            execute,
+            log,
+            sensors,
+        }) => {
+            // Inicializar logger y sensores
+            sandra_core::kernel::logica::logger::init(*log);
+            sandra_core::kernel::logica::telemetria::init(*sensors);
+
             println!("Inicializando Sentinel...");
             let mut system = System::init();
 
             // Conectar a Sandra (Golang)
             let url = system.config.get_url();
             if let Err(e) = system.connect_sandra(url).await {
-                eprintln!("Error conectando a Sandra Server: {}", e);
+                let msg = format!("Error conectando a Sandra Server: {}", e);
+                eprintln!("{}", msg);
+                sandra_core::kernel::logica::logger::log_error("CONEXION", &msg);
                 return Ok(());
             }
 
@@ -56,34 +92,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(_) => {
                         let duration = start.elapsed();
                         println!("🚀 Ciclo de carga finalizado en {:.2?}.", duration);
-                        // Aquí podrías mostrar estadísticas o detalles desde system.kernel.beneficiarios
-                        println!("--- Muestra de 5 Beneficiarios (Distribuidos) ---");
+
+                        sandra_core::kernel::logica::telemetria::record(
+                            "SISTEMA",
+                            "Ciclo Total",
+                            duration,
+                            system.kernel.beneficiarios.len(),
+                            "Ciclo completo",
+                        );
+
+                        // Aquí podrías mostrar estadísticas
                         let len = system.kernel.beneficiarios.len();
                         if len > 0 {
-                            // let step = if len > 2 { len / 2 } else { 1 };
-                            // for i in (0..len).step_by(step).take(2) {
-                            //     if let Ok(json_str) =
-                            //         serde_json::to_string_pretty(&system.kernel.beneficiarios[i])
-                            //     {
-                            //         println!("Beneficiario [{}]:\n{}", i, json_str);
-                            //     }
-                            // }
-
                             // EXPORTACION
                             let export_path = std::path::Path::new("nomina_exportada.csv");
+                            let t_export = std::time::Instant::now(); // Medir exportación
+
                             if let Err(e) =
                                 sandra_core::kernel::logica::exportador::exportar_nomina_csv(
                                     &system.kernel.beneficiarios,
                                     export_path,
                                 )
                             {
-                                eprintln!("❌ Error exportando CSV: {}", e);
+                                let msg = format!("Error exportando CSV: {}", e);
+                                eprintln!("❌ {}", msg);
+                                sandra_core::kernel::logica::logger::log_error("EXPORT", &msg);
                             } else {
+                                // Registrar métrica de exportación
+                                let size_mb = if let Ok(meta) = std::fs::metadata(export_path) {
+                                    meta.len() as f64 / 1_048_576.0
+                                } else {
+                                    0.0
+                                };
+
+                                sandra_core::kernel::logica::telemetria::record(
+                                    "EXPORT",
+                                    "CSV Nómina",
+                                    t_export.elapsed(),
+                                    system.kernel.beneficiarios.len(),
+                                    &format!("{:.2} MB", size_mb),
+                                );
+
                                 println!("✅ Nómina exportada a: {}", export_path.display());
                             }
                         }
+
+                        // Generar reporte final de telemetría
+                        sandra_core::kernel::logica::telemetria::generate_report();
                     }
-                    Err(e) => eprintln!("Error en el ciclo de carga: {}", e),
+                    Err(e) => {
+                        let msg = format!("Error crítico en el ciclo de carga: {}", e);
+                        eprintln!("{}", msg);
+                        sandra_core::kernel::logica::logger::log_error("KERNEL", &msg);
+                    }
                 }
             } else {
                 println!("Sistema en espera (use -x para ejecutar prueba inmediata).");

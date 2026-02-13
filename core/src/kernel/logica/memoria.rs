@@ -131,10 +131,10 @@ pub struct Base {
 
     #[serde(
         default,
-        deserialize_with = "deserialize_null_as_string",
-        alias = "cod_profesion"
+        deserialize_with = "deserialize_string_to_f64",
+        alias = "st_profesion"
     )]
-    pub st_profesion: String,
+    pub st_profesion: f64,
 
     #[serde(default, alias = "patrones")]
     pub patterns: String,
@@ -150,20 +150,6 @@ pub struct Base {
         alias = "sueldo_mensual"
     )]
     pub sueldo_base: f64,
-
-    #[serde(
-        default,
-        deserialize_with = "deserialize_string_to_f64",
-        alias = "p_antiguedad"
-    )]
-    pub prima_antiguedad: f64,
-
-    #[serde(
-        default,
-        deserialize_with = "deserialize_string_to_f64",
-        alias = "p_hijos"
-    )]
-    pub prima_hijos: f64,
 
     #[serde(
         default,
@@ -185,6 +171,10 @@ pub struct Base {
         alias = "antiguedad_grado"
     )]
     pub antiguedad_grado: u32,
+
+    // ALMACENAMIENTO DINÁMICO DE PRIMAS CALCULADAS
+    #[serde(skip_deserializing)]
+    pub calculos: Option<std::collections::HashMap<String, f64>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,15 +261,14 @@ impl Default for Base {
             mes_reconocido: 0,
             dia_reconocido: 0,
             st_no_ascenso: 0,
-            st_profesion: String::new(),
+            st_profesion: 0.0,
             patterns: String::new(),
             f_retiro: None,
             sueldo_base: 0.0,
-            prima_antiguedad: 0.0,
-            prima_hijos: 0.0,
             total_asignaciones: 0.0,
             antiguedad: 0,
             antiguedad_grado: 0,
+            calculos: None,
         }
     }
 }
@@ -331,20 +320,6 @@ where
         _ => Err(serde::de::Error::custom(
             "Expected number, string or null for u32",
         )),
-    }
-}
-
-// Helper para convertir nulls o numeros a String vacío o texto
-fn deserialize_null_as_string<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let v: serde_json::Value = serde::Deserialize::deserialize(deserializer)?;
-    match v {
-        serde_json::Value::Null => Ok(String::new()),
-        serde_json::Value::String(s) => Ok(s),
-        serde_json::Value::Number(n) => Ok(n.to_string()),
-        _ => Ok(String::new()),
     }
 }
 
@@ -455,4 +430,19 @@ pub struct Beneficiario {
 
     #[serde(default)]
     pub deducciones: Vec<Movimiento>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PrimaFuncion {
+    #[serde(alias = "codigo")]
+    pub codigo: String,
+
+    #[serde(alias = "nombre")]
+    pub nombre: String,
+
+    #[serde(alias = "descripcion")]
+    pub descripcion: String,
+
+    #[serde(default)]
+    pub formula: String,
 }

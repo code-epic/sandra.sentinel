@@ -23,6 +23,7 @@ pub struct Perceptron {
 
     // Memoria de Trabajo
     pub directiva: Vec<memoria::Directiva>,
+    pub primas_funciones: Vec<memoria::PrimaFuncion>,
     pub conceptos: Vec<memoria::Concepto>,
     pub base: Vec<memoria::Base>,
     pub movimientos: Vec<memoria::Movimiento>,
@@ -34,6 +35,7 @@ impl Default for Perceptron {
         Perceptron {
             client: None,
             directiva: Vec::new(),
+            primas_funciones: Vec::new(),
             conceptos: Vec::new(),
             base: Vec::new(),
             movimientos: Vec::new(),
@@ -90,13 +92,45 @@ impl Perceptron {
         println!(">>> INICIANDO CICLO DE CARGA DE NÓMINA <<<");
         let client = self.client.clone().ok_or("Cliente gRPC no conectado")?;
 
-        // 1. Cargar Directiva (Bloqueante/Prioridad)
-        println!("1. Cargando Directiva...");
-        let mut c_dir = cargador::Cargador {
-            client: Some(client.clone()),
-        };
-        self.directiva = c_dir.cargar_directiva().await?;
-        println!("   Directiva cargada: {} registros.", self.directiva.len());
+        // 1. Cargar Directiva y Primas (Fase Inicial)
+        println!("1. Cargando Directiva y Primas Funciones (Paralelo)...");
+
+        let c_dir_client = client.clone();
+        let c_primas_client = client.clone();
+
+        let task_directiva = tokio::spawn(async move {
+            let mut c = cargador::Cargador {
+                client: Some(c_dir_client),
+            };
+            c.cargar_directiva().await
+        });
+
+        let task_primas = tokio::spawn(async move {
+            let mut c = cargador::Cargador {
+                client: Some(c_primas_client),
+            };
+            c.cargar_primas_funciones().await
+        });
+
+        let (res_dir, res_primas) = tokio::join!(task_directiva, task_primas);
+
+        // Unwrap de JoinError y luego de Result
+        self.directiva = res_dir??;
+        self.primas_funciones = res_primas??;
+
+        // --- INSTANCIAR MOTOR (Fase 1.5) ---
+        // Creamos el motor UNA VEZ con las primas cargadas
+        println!("1.5. Inicializando SentinelEngine...");
+        // Clonamos las primas porque el motor toma ownership o hacemos un clone explícito
+        let motor = crate::calc::motor::SentinelEngine::new(self.primas_funciones.clone());
+        // Envolvemos en Arc para compartirlo thread-safe con la tarea asíncrona de Base
+        let motor_arc = std::sync::Arc::new(motor);
+
+        println!(
+            "   ✅ Directiva: {} | Primas: {} | Motor Listo",
+            self.directiva.len(),
+            self.primas_funciones.len()
+        );
 
         // 2. Carga Paralela (Base, Conceptos, Movimientos)
         println!("2. Iniciando Carga Paralela (Base, Conceptos, Movimientos)...");
@@ -106,13 +140,14 @@ impl Perceptron {
         let c2 = client.clone();
         let c3 = client.clone();
 
-        // Clonamos directiva para pasarla al thread de cálculo de Base
+        // Clonamos recursos para pasar a threads
         let directivas_clone = self.directiva.clone();
+        let motor_ref = motor_arc.clone(); // Arc clone es barato
 
         let task_base = tokio::spawn(async move {
             let mut c = cargador::Cargador { client: Some(c1) };
-            // Pasamos referencia a la copia local de directivas
-            c.cargar_base(&directivas_clone).await
+            // Pasamos referencia a la copia local de directivas y al motor
+            c.cargar_base(&directivas_clone, &motor_ref).await
         });
 
         let task_conc = tokio::spawn(async move {

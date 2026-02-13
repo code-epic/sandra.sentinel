@@ -45,6 +45,7 @@ pub fn exportar_nomina_csv(
         "sueldo_base",
         "prima_antiguedad",
         "prima_hijos",
+        "prima_profesionalizacion",
         "total_asignaciones_base",
         // MOVIMIENTOS
         "cap_banco",
@@ -104,8 +105,23 @@ pub fn exportar_nomina_csv(
 
         // Financiero Base
         let sueldo = format!("{:.2}", b.base.sueldo_base);
-        let p_antig = format!("{:.2}", b.base.prima_antiguedad);
-        let p_hijos = format!("{:.2}", b.base.prima_hijos);
+
+        // Helper inline para extraer de calculos
+        let get_calc = |key: &str| -> String {
+            if let Some(map) = &b.base.calculos {
+                if let Some(val) = map.get(key) {
+                    return format!("{:.2}", val);
+                }
+            }
+            "0.00".to_string()
+        };
+
+        // Extraemos las primas dinámicamente usando sus códigos reales en BD
+        let p_antig = get_calc("prima_tiemposervicio"); // O prima_antiguedad según BD
+        let p_hijos = get_calc("prima_hijos");
+        // Agregamos otras importantes si quieres
+        let p_profe = get_calc("prima_profesionalizacion");
+
         let total_asig = format!("{:.2}", b.base.total_asignaciones);
 
         // Movimientos
@@ -143,6 +159,7 @@ pub fn exportar_nomina_csv(
             &sueldo,
             &p_antig,
             &p_hijos,
+            &p_profe,
             &total_asig,
             &cap_banco,
             &anticipo,
