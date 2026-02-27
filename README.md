@@ -92,3 +92,56 @@ El resultado final no es solo una copia de datos, sino una **Nómina Auditada**.
 ---
 
 > **Sandra Sentinel** es un ejemplo de ingeniería de sistemas moderna: tipado fuerte, concurrencia segura y optimización a bajo nivel para resolver problemas de gestión de datos a gran escala.
+
+## Ejecución Controlada (Manifiesto de Carga)
+
+Para auditorías, pruebas específicas o ejecuciones de producción controladas, Sentinel soporta un **Manifiesto de Ejecución** en formato JSON. Este archivo permite inyectar parámetros dinámicos (filtros SQL, límites) en el pipeline de carga sin recompilar el núcleo.
+
+### Estructura del Manifiesto
+
+Crea un archivo `.json` (ej: `nomina_2026.json`) con la siguiente estructura:
+
+```json
+{
+  "nombre": "Nómina Enero 2026 - Oficial",
+  "ciclo": "2026-01",
+  "descripcion": "Ejecución final con ajustes de decreto.",
+  "autor": "Admin. Sistemas",
+  "fecha": "2026-01-31 08:00:00",
+  "version": "1.0.0",
+  "cargas": {
+    "IPSFA_CPrimasFunciones": {
+      "sql_filter": "f.oidd = 81"
+    },
+    "IPSFA_CDirectiva": {
+      "sql_filter": "dd.directiva_sueldo_id = 81"
+    },
+    "IPSFA_CConceptos": {
+      "sql_filter": "directiva_sueldo_id = 81"
+    },
+    "IPSFA_CBase": {
+      "sql_filter": "status_id = 201"
+    },
+    "IPSFA_CBeneficiarios": {
+      "sql_filter": "status_id = 201"
+    }
+  }
+}
+```
+
+### Ejecución con Manifiesto
+
+```bash
+# Ejecutar usando un manifiesto específico
+sandra start -x --manifest nomina_2026.json
+
+# Ver ayuda
+sandra start --help
+```
+
+El sistema automáticamente:
+
+1.  Validará el JSON.
+2.  Cargará la configuración en el Kernel (`Perceptron`).
+3.  Aplicará los filtros SQL definidos a las consultas gRPC correspondientes.
+4.  Registrará en el log y telemetría qué manifiesto se utilizó.

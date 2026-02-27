@@ -19,7 +19,7 @@ struct Metric {
 pub fn init(enabled: bool) {
     SENSORS_ENABLED.store(enabled, Ordering::Relaxed);
     if enabled {
-        println!("📡 [Sensors] Telemetría activada. Se generará reporte al finalizar.");
+        println!("[Sensors] Telemetría activada. Se generará reporte al finalizar.");
     }
 }
 
@@ -51,7 +51,7 @@ pub fn generate_report() {
     }
 
     let report_path = "sandra_metrics_report.txt";
-    println!("📊 Generando reporte de sensores en '{}'...", report_path);
+    println!("> Generando reporte de sensores en '{}'...", report_path);
 
     if let Ok(store) = METRICS_STORE.lock() {
         let mut file = File::create(report_path).expect("No se pudo crear reporte");
@@ -109,6 +109,6 @@ pub fn generate_report() {
         )
         .unwrap();
 
-        println!("✨ Reporte generado exitosamente.");
+        println!("+ Reporte generado exitosamente.");
     }
 }

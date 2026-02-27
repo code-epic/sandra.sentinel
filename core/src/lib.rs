@@ -1,7 +1,8 @@
+pub mod calc;
 pub mod kernel;
 pub mod model;
-pub mod calc;
 pub mod system;
+pub mod util;
 
 // Punto de entrada del sistema
 pub struct System {
@@ -29,13 +30,13 @@ impl System {
         // Aquí se verifican fórmulas, tablas, etc.
         println!("Calculos Cargado");
 
-        System {
-            kernel,
-            config,
-        }
+        System { kernel, config }
     }
 
-    pub async fn connect_sandra(&mut self, url: String) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-         self.kernel.connect_to_sandra(url).await
+    pub async fn connect_sandra(
+        &mut self,
+        url: String,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.kernel.connect_to_sandra(url).await
     }
 }

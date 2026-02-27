@@ -1,3 +1,4 @@
+use super::logger;
 use crate::kernel::logica::memoria::Beneficiario;
 use std::fs::File;
 use std::path::Path;
@@ -7,7 +8,7 @@ pub fn exportar_nomina_csv(
     path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
-        "💾 Exportando nómina a CSV en '{}' ({} registros)...",
+        "> Exportando nómina a CSV en '{}' ({} registros)...",
         path.display(),
         beneficiarios.len()
     );
@@ -173,6 +174,6 @@ pub fn exportar_nomina_csv(
     }
 
     wtr.flush()?;
-    println!("✅ Archivo CSV generado correctamente.");
+    logger::log_info("EXPORT", "Archivo CSV generado correctamente.");
     Ok(())
 }

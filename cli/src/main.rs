@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
-use sandra_core::System;
+
+mod commands;
 
 #[derive(Parser)]
 #[command(name = "sandra")]
@@ -32,20 +33,21 @@ enum Commands {
         /// Activa la recolección de métricas de rendimiento y genera reporte final (-s).
         #[arg(short = 's', long = "sensors")]
         sensors: bool,
+
+        /// Ruta a un archivo de manifiesto (.json) para configurar la ejecución.
+        #[arg(short = 'm', long = "manifest")]
+        manifest: Option<String>,
     },
 
-    /// Procesa cálculos de nómina en lote desde un archivo local (Offline).
+    /// Procesa conciliación de nómina desde un archivo local.
     #[command(
-        long_about = "Permite procesar un archivo JSON local con beneficiarios sin conectar al servidor.\nÚtil para pruebas de fórmulas o reprocesos manuales."
+        long_about = "Permite procesar archivos de nómina para validación y conciliación manual.\nAnteriormente conocido como modo Lote."
     )]
-    Lote {
+    Conciliacion {
         /// Ruta al archivo JSON de entrada.
         #[arg(short, long)]
         archivo: Option<String>,
     },
-
-    /// Muestra el estado de salud del sistema y recursos.
-    Monitor,
 
     /// Valida claves de acceso y permisos de seguridad (Herramienta admin).
     Validar {
@@ -67,112 +69,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             execute,
             log,
             sensors,
+            manifest,
         }) => {
-            // Inicializar logger y sensores
-            sandra_core::kernel::logica::logger::init(*log);
-            sandra_core::kernel::logica::telemetria::init(*sensors);
-
-            println!("Inicializando Sentinel...");
-            let mut system = System::init();
-
-            // Conectar a Sandra (Golang)
-            let url = system.config.get_url();
-            if let Err(e) = system.connect_sandra(url).await {
-                let msg = format!("Error conectando a Sandra Server: {}", e);
-                eprintln!("{}", msg);
-                sandra_core::kernel::logica::logger::log_error("CONEXION", &msg);
-                return Ok(());
-            }
-
-            println!("Sentinel conectado y listo.");
-
-            if *execute {
-                let start = std::time::Instant::now();
-                match system.kernel.ejecutar_ciclo_carga().await {
-                    Ok(_) => {
-                        let duration = start.elapsed();
-                        println!("🚀 Ciclo de carga finalizado en {:.2?}.", duration);
-
-                        sandra_core::kernel::logica::telemetria::record(
-                            "SISTEMA",
-                            "Ciclo Total",
-                            duration,
-                            system.kernel.beneficiarios.len(),
-                            "Ciclo completo",
-                        );
-
-                        // Aquí podrías mostrar estadísticas
-                        let len = system.kernel.beneficiarios.len();
-                        if len > 0 {
-                            // EXPORTACION
-                            let export_path = std::path::Path::new("nomina_exportada.csv");
-                            let t_export = std::time::Instant::now(); // Medir exportación
-
-                            if let Err(e) =
-                                sandra_core::kernel::logica::exportador::exportar_nomina_csv(
-                                    &system.kernel.beneficiarios,
-                                    export_path,
-                                )
-                            {
-                                let msg = format!("Error exportando CSV: {}", e);
-                                eprintln!("❌ {}", msg);
-                                sandra_core::kernel::logica::logger::log_error("EXPORT", &msg);
-                            } else {
-                                // Registrar métrica de exportación
-                                let size_mb = if let Ok(meta) = std::fs::metadata(export_path) {
-                                    meta.len() as f64 / 1_048_576.0
-                                } else {
-                                    0.0
-                                };
-
-                                sandra_core::kernel::logica::telemetria::record(
-                                    "EXPORT",
-                                    "CSV Nómina",
-                                    t_export.elapsed(),
-                                    system.kernel.beneficiarios.len(),
-                                    &format!("{:.2} MB", size_mb),
-                                );
-
-                                println!("✅ Nómina exportada a: {}", export_path.display());
-                            }
-                        }
-
-                        // Generar reporte final de telemetría
-                        sandra_core::kernel::logica::telemetria::generate_report();
-                    }
-                    Err(e) => {
-                        let msg = format!("Error crítico en el ciclo de carga: {}", e);
-                        eprintln!("{}", msg);
-                        sandra_core::kernel::logica::logger::log_error("KERNEL", &msg);
-                    }
-                }
-            } else {
-                println!("Sistema en espera (use -x para ejecutar prueba inmediata).");
-            }
+            commands::start::execute(*execute, *log, *sensors, manifest.clone()).await?;
         }
-        Some(Commands::Lote { archivo }) => {
-            let _system = System::init(); // Core necesario para cálculos
-            match archivo {
-                Some(path) => println!("Procesando lote desde: {}", path),
-                None => println!("Procesando lote estándar..."),
-            }
-        }
-        Some(Commands::Monitor) => {
-            println!("Estado del Sistema: OK");
-            println!("Memoria: 24MB"); // Ejemplo
-            println!("Conexiones: 0");
+        Some(Commands::Conciliacion { archivo }) => {
+            commands::conciliacion::execute(archivo.clone()).await;
         }
         Some(Commands::Validar { clave }) => {
-            println!("Validando clave: {}", clave);
-            // Lógica de validación dummy
-            if clave == "1234" {
-                println!("Clave VALIDA");
-            } else {
-                println!("Clave INVALIDA");
-            }
+            commands::validar::execute(clave.clone());
         }
         Some(Commands::Version) => {
-            println!("Sandra Sentinel v0.1.0");
+            commands::version::execute();
         }
         None => {
             println!("Por favor usa --help para ver los comandos disponibles.");

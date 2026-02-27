@@ -21,14 +21,14 @@ pub struct SentinelEngine {
 
 impl SentinelEngine {
     pub fn new(primas: Vec<PrimaFuncion>) -> Self {
-        println!("🚀 [SentinelEngine] Iniciando motor de cálculo...");
+        // println!("[SentinelEngine] Iniciando motor de cálculo...");
         let engine = Engine::new();
         let mut formulas = Vec::new();
 
-        println!(
-            "📦 [SentinelEngine] Cargando {} fórmulas base desde PrimaFuncion...",
-            primas.len()
-        );
+        // println!(
+        //     "[SentinelEngine] Cargando {} fórmulas base desde PrimaFuncion...",
+        //     primas.len()
+        // );
 
         for prima in primas {
             // Asumimos que el código viene en Rhai válido o compatible
@@ -39,7 +39,7 @@ impl SentinelEngine {
             match engine.compile(&raw) {
                 Ok(ast) => {
                     // Marcador de interpretación exitosa
-                    // println!("✅ [SentinelEngine] Fórmula interpretada: {} -> OK", prima.codigo);
+                    // println!("[SentinelEngine] Fórmula interpretada: {} -> OK", prima.codigo);
                     formulas.push(FormulaFnx {
                         codigo: prima.codigo,
                         nombre: prima.nombre,
@@ -50,17 +50,17 @@ impl SentinelEngine {
                 }
                 Err(e) => {
                     eprintln!(
-                        "⚠️ [SentinelEngine] Error crítico interpretando fórmula [{}] '{}': {}",
+                        "[SentinelEngine] Error crítico interpretando fórmula [{}] '{}': {}",
                         prima.codigo, prima.formula, e
                     );
                 }
             }
         }
 
-        println!(
-            "✅ [SentinelEngine] Carga completa. {} fórmulas listas para ejecución.",
-            formulas.len()
-        );
+        // println!(
+        //     "[SentinelEngine] Carga completa. {} fórmulas listas para ejecución.",
+        //     formulas.len()
+        // );
 
         Self {
             engine,
@@ -85,7 +85,7 @@ impl SentinelEngine {
                 // let debug = false; // Cambiar a true si quieres ver logs de un item al azar o el primero
 
                 // Hack sucio para debugear el primero del thread (rayon lo hace difícil, pero imprimirá algunos)
-                // if ben.sueldo_base > 600.0 { println!("🔍 Scope para SUELDO {}: Hijos={}, Antig={}, StProf={}", ben.sueldo_base, ben.n_hijos, ben.antiguedad, ben.st_profesion); }
+                // if ben.sueldo_base > 600.0 { println!("[DEBUG] Scope para SUELDO {}: Hijos={}, Antig={}, StProf={}", ben.sueldo_base, ben.n_hijos, ben.antiguedad, ben.st_profesion); }
 
                 for formula in self.formulas.iter() {
                     // 1. Circuit Breaker: Si la fórmula falló antes, la ignoramos.
@@ -116,7 +116,7 @@ impl SentinelEngine {
                                     "Fórmula '{}' DESACTIVADA por error crítico: {}",
                                     formula.codigo, e
                                 );
-                                eprintln!("❌ [SentinelEngine] {}", msg);
+                                eprintln!("[ERROR] [SentinelEngine] {}", msg);
                                 // Log del sistema
                                 crate::kernel::logica::logger::log_error("FORMULA", &msg);
                             }

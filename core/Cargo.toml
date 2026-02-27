@@ -17,6 +17,9 @@ csv = "1.4.0"
 rhai = { version = "1.20", features = ["sync", "decimal"] }
 rayon = "1.10"
 regex = "1.11"
+md-5 = "0.10.6"
+zip = "2.2.0"
+walkdir = "2.5.0"
 
 [build-dependencies]
 tonic-build = "0.12"

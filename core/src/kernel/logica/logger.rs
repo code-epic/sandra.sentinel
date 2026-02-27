@@ -13,7 +13,7 @@ static LOG_FILE_LOCK: Mutex<()> = Mutex::new(());
 pub fn init(enabled: bool) {
     LOG_ENABLED.store(enabled, Ordering::Relaxed);
     if enabled {
-        println!("📝 [Logger] Sistema de logs activado. Archivo: sandra_sentinel.log");
+        println!("[Logger] Sistema de logs activado. Archivo: sandra_sentinel.log");
         log_system("Sistema de Logs Iniciado");
     }
 }

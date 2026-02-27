@@ -28,6 +28,9 @@ pub struct Perceptron {
     pub base: Vec<memoria::Base>,
     pub movimientos: Vec<memoria::Movimiento>,
     pub beneficiarios: Vec<memoria::Beneficiario>,
+
+    // Configuración de Ejecución (Manifiesto)
+    pub config: crate::model::Manifiesto,
 }
 
 impl Default for Perceptron {
@@ -40,6 +43,7 @@ impl Default for Perceptron {
             base: Vec::new(),
             movimientos: Vec::new(),
             beneficiarios: Vec::new(),
+            config: crate::model::Manifiesto::default(),
         }
     }
 }
@@ -89,74 +93,113 @@ impl Perceptron {
     pub async fn ejecutar_ciclo_carga(
         &mut self,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        println!(">>> INICIANDO CICLO DE CARGA DE NÓMINA <<<");
+        // println!(">>> INICIANDO CICLO DE CARGA DE NÓMINA <<<"); // REEMPLAZADO POR HEADER DE CLI
+
+        // Clonar configuración para pasarla a los hilos
+        let config_ref = self.config.clone();
         let client = self.client.clone().ok_or("Cliente gRPC no conectado")?;
 
-        // 1. Cargar Directiva y Primas (Fase Inicial)
-        println!("1. Cargando Directiva y Primas Funciones (Paralelo)...");
+        // ---------------------------------------------------------------------
+        // PASO 1: CARGA DE REFERENCIAS
+        // ---------------------------------------------------------------------
+        println!("PASO 1: CARGA DE REFERENCIAS");
+        println!("{:-<80}", "");
 
+        let t_p1 = std::time::Instant::now();
         let c_dir_client = client.clone();
         let c_primas_client = client.clone();
 
+        let conf_1 = config_ref.clone();
+        let conf_2 = config_ref.clone();
+
         let task_directiva = tokio::spawn(async move {
-            let mut c = cargador::Cargador {
-                client: Some(c_dir_client),
-            };
+            let mut c = cargador::Cargador::new(conf_1);
+            c.client = Some(c_dir_client);
             c.cargar_directiva().await
         });
 
         let task_primas = tokio::spawn(async move {
-            let mut c = cargador::Cargador {
-                client: Some(c_primas_client),
-            };
+            let mut c = cargador::Cargador::new(conf_2);
+            c.client = Some(c_primas_client);
             c.cargar_primas_funciones().await
         });
 
         let (res_dir, res_primas) = tokio::join!(task_directiva, task_primas);
 
-        // Unwrap de JoinError y luego de Result
         self.directiva = res_dir??;
         self.primas_funciones = res_primas??;
 
-        // --- INSTANCIAR MOTOR (Fase 1.5) ---
-        // Creamos el motor UNA VEZ con las primas cargadas
-        println!("1.5. Inicializando SentinelEngine...");
-        // Clonamos las primas porque el motor toma ownership o hacemos un clone explícito
-        let motor = crate::calc::motor::SentinelEngine::new(self.primas_funciones.clone());
-        // Envolvemos en Arc para compartirlo thread-safe con la tarea asíncrona de Base
-        let motor_arc = std::sync::Arc::new(motor);
+        // Helper para imprimir filtros debajo del resumen
+        let print_filtro = |cfg: &crate::model::Manifiesto, func: &str| {
+            if let Some(c) = cfg.cargas.get(func) {
+                if let Some(f) = &c.sql_filter {
+                    println!("      - Filtro: {}", f);
+                }
+            }
+        };
+
+        // Imprimir Resumen Paso 1
+        println!(
+            "  • {:<20} : {:>10} registros | OK",
+            "Directiva",
+            self.directiva.len()
+        );
+        print_filtro(&self.config, "IPSFA_CDirectiva");
 
         println!(
-            "   ✅ Directiva: {} | Primas: {} | Motor Listo",
-            self.directiva.len(),
+            "  • {:<20} : {:>10} registros | OK",
+            "Primas Funciones",
             self.primas_funciones.len()
         );
+        print_filtro(&self.config, "IPSFA_CPrimasFunciones");
 
-        // 2. Carga Paralela (Base, Conceptos, Movimientos)
-        println!("2. Iniciando Carga Paralela (Base, Conceptos, Movimientos)...");
+        println!("    (Tiempo Paso 1: {:.2?})", t_p1.elapsed());
+        println!();
 
-        // Clones para tareas
+        // --- INSTANCIAR MOTOR (Fase 1.5) ---
+        // println!("1.5. Inicializando SentinelEngine..."); // Oculto
+        let motor = crate::calc::motor::SentinelEngine::new(self.primas_funciones.clone());
+        let motor_arc = std::sync::Arc::new(motor);
+        println!(
+            "  • {:<20} : {:>10} | LISTO",
+            "Motor de Cálculo", "Inicializado"
+        );
+        println!();
+
+        // ---------------------------------------------------------------------
+        // PASO 2: CARGA MASIVA Y CÁLCULO
+        // ---------------------------------------------------------------------
+        println!("PASO 2: CARGA MASIVA Y CÁLCULO (PARALELO)");
+        println!("{:-<80}", "");
+
+        let t_p2 = std::time::Instant::now();
+
         let c1 = client.clone();
         let c2 = client.clone();
         let c3 = client.clone();
 
-        // Clonamos recursos para pasar a threads
+        let conf_3 = config_ref.clone();
+        let conf_4 = config_ref.clone();
+        let conf_5 = config_ref.clone();
+
         let directivas_clone = self.directiva.clone();
-        let motor_ref = motor_arc.clone(); // Arc clone es barato
+        let motor_ref = motor_arc.clone();
 
         let task_base = tokio::spawn(async move {
-            let mut c = cargador::Cargador { client: Some(c1) };
-            // Pasamos referencia a la copia local de directivas y al motor
+            let mut c = cargador::Cargador::new(conf_3);
+            c.client = Some(c1);
             c.cargar_base(&directivas_clone, &motor_ref).await
         });
 
         let task_conc = tokio::spawn(async move {
-            let mut c = cargador::Cargador { client: Some(c2) };
+            let mut c = cargador::Cargador::new(conf_4);
+            c.client = Some(c2);
             c.cargar_conceptos().await
         });
 
         let task_mov = tokio::spawn(async move {
-            let mut c = cargador::Cargador { client: Some(c3) };
+            let mut c = cargador::Cargador::new(conf_5);
+            c.client = Some(c3);
             c.cargar_movimientos().await
         });
 
@@ -165,38 +208,57 @@ impl Perceptron {
 
         // Procesar resultados
         self.base = res_base??;
+        self.conceptos = res_conc??;
+        self.movimientos = res_mov??;
+
         println!(
-            "   - Base cargada y calculada (Pipeline): {} registros.",
+            "  • {:<20} : {:>10} registros | OK",
+            "Base (Personal)",
             self.base.len()
         );
+        print_filtro(&self.config, "IPSFA_CBase");
 
-        self.conceptos = res_conc??;
         println!(
-            "   - Conceptos cargados: {} registros.",
-            self.conceptos.len()
-        );
-
-        self.movimientos = res_mov??;
-        println!(
-            "   - Movimientos cargados: {} registros.",
+            "  • {:<20} : {:>10} registros | OK",
+            "Movimientos",
             self.movimientos.len()
         );
+        print_filtro(&self.config, "IPSFA_CMovimientos");
 
-        // 3. Cargar Beneficiarios (Final - Cruce)
-        println!("3. Cargando y Calculando Beneficiarios...");
-        let mut c_ben = cargador::Cargador {
-            client: Some(client.clone()),
-        };
+        println!(
+            "  • {:<20} : {:>10} registros | OK",
+            "Conceptos",
+            self.conceptos.len()
+        );
+        print_filtro(&self.config, "IPSFA_CConceptos");
+
+        println!("    (Tiempo Paso 2: {:.2?})", t_p2.elapsed());
+        println!();
+
+        // ---------------------------------------------------------------------
+        // PASO 3: FUSIÓN DE BENEFICIARIOS
+        // ---------------------------------------------------------------------
+        println!("PASO 3: FUSIÓN DE BENEFICIARIOS");
+        println!("{:-<80}", "");
+
+        let t_p3 = std::time::Instant::now();
+
+        let mut c_ben = cargador::Cargador::new(config_ref.clone());
+        c_ben.client = Some(client.clone());
+
         self.beneficiarios = c_ben
             .cargar_beneficiarios(&self.base, &self.movimientos)
             .await?;
-        println!("   Beneficiarios procesados: {}.", self.beneficiarios.len());
 
-        // if let Some(primero) = self.base.first() {
-        //     println!("Ejemplo Base: {:?}", primero);
-        // }
+        println!(
+            "  • {:<20} : {:>10} registros | OK",
+            "Beneficiarios",
+            self.beneficiarios.len()
+        );
+        print_filtro(&self.config, "IPSFA_CBeneficiarios");
 
-        println!(">>> CICLO COMPLETADO EXITOSAMENTE <<<");
+        println!("    (Tiempo Paso 3: {:.2?})", t_p3.elapsed());
+        // println!(">>> CICLO COMPLETADO EXITOSAMENTE <<<"); // Ya no es necesario
         Ok(())
     }
 

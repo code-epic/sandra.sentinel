@@ -1,0 +1,25 @@
+{
+  "nombre": "Nómina Enero 2026 - Oficial",
+  "ciclo": "2026-01",
+  "descripcion": "Ejecución final con ajustes de decreto.",
+  "autor": "Admin. Sistemas",
+  "fecha": "2026-01-31 08:00:00",
+  "version": "1.0.0",
+  "cargas": {
+    "IPSFA_CPrimasFunciones": {
+      "sql_filter": "f.oidd = 81"
+    },
+    "IPSFA_CDirectiva": {
+      "sql_filter": "dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0"
+    },
+    "IPSFA_CConceptos": {
+      "sql_filter": "directiva_sueldo_id = 81"
+    },
+    "IPSFA_CBase": {
+      "sql_filter": "status_id = 201 "
+    },
+    "IPSFA_CBeneficiarios": {
+      "sql_filter": "bnf.status_id = 201"
+    }
+  }
+}

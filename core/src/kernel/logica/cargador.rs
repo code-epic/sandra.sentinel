@@ -4,14 +4,20 @@ use crate::kernel::sandra::sentinel_dynamic_service_client::SentinelDynamicServi
 use crate::kernel::sandra::DynamicRequest;
 use tonic::transport::Channel;
 
+use crate::model::Manifiesto;
+
 #[derive(Debug)]
 pub struct Cargador {
     pub client: Option<SentinelDynamicServiceClient<Channel>>,
+    pub config: Manifiesto,
 }
 
 impl Cargador {
-    pub fn new() -> Self {
-        Self { client: None }
+    pub fn new(config: Manifiesto) -> Self {
+        Self {
+            client: None,
+            config,
+        }
     }
 
     pub async fn connect(
@@ -57,12 +63,23 @@ impl Cargador {
         engine: &crate::calc::motor::SentinelEngine,
     ) -> Result<Vec<Base>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBase";
-        println!("🚀 [INIT] Iniciando carga inteligente para: '{}'", funcion);
+        // println!("    > Iniciando carga: '{}'", funcion);
 
         if let Some(client) = &mut self.client {
+            // Lógica Manifiesto: Buscar parámetros dinámicos
+            let mut sql_param = "\"%\"".to_string();
+            if let Some(cfg) = self.config.cargas.get(funcion) {
+                if let Some(filter) = &cfg.sql_filter {
+                    let msg = format!("Aplicando filtro a {}: {}", funcion, filter);
+                    // println!("      - Filtro: {}", filter);
+                    logger::log_info("MANIFEST", &msg);
+                    sql_param = filter.clone();
+                }
+            }
+
             let request = tonic::Request::new(DynamicRequest {
                 funcion: funcion.to_string(),
-                parametros: "\"%\"".to_string(),
+                parametros: sql_param,
                 valores: "null".to_string(),
             });
 
@@ -73,19 +90,22 @@ impl Cargador {
             let mut chunks = 0;
 
             while let Some(msg) = stream.message().await? {
+                if msg.rows.is_empty() {
+                    continue;
+                }
                 chunks += 1;
                 // Deserializar array completo de bytes (JSON)
                 match serde_json::from_slice::<Vec<Base>>(&msg.rows) {
                     Ok(items) => {
                         for mut item in items {
-                            // 1. 🔥 CÁLCULO PREVIO: TIEMPO + SUELDO BASE (Requisito para el motor)
+                            // 1. CÁLCULO PREVIO: TIEMPO + SUELDO BASE (Requisito para el motor)
                             crate::calc::procesar_registro_base(&mut item, directivas);
                             results.push(item);
                         }
                     }
                     Err(e) => {
                         if results.len() == 0 && chunks <= 5 {
-                            eprintln!("⚠️ [Base Error] Deserializing batch: {}", e);
+                            eprintln!("[Base Error] Deserializing batch: {}", e);
                         }
                     }
                 }
@@ -93,14 +113,14 @@ impl Cargador {
 
             // 2. ⚡️ INVOCACIÓN DEL MOTOR SENTINEL (Cálculo de Nómina Masivo)
             println!(
-                "⚙️ [SentinelEngine] Procesando nómina para {} registros...",
+                "    > Calculando nómina para {} registros...",
                 results.len()
             );
 
             // El motor usa Rayon internamente para calcular en paralelo
             let calculos = engine.calcular_nomina(&results);
 
-            // 3. 💾 FUSIÓN DE RESULTADOS (Map-Reduce: Volcar cálculos al struct Base)
+            // 3. FUSIÓN DE RESULTADOS (Map-Reduce: Volcar cálculos al struct Base)
             // Optimizamos creando un mapa temporal para acceso rápido por patrón/key
             let mapa_calculos: std::collections::HashMap<_, _> = calculos.into_iter().collect();
 
@@ -135,13 +155,8 @@ impl Cargador {
                 );
             }
 
-            println!(
-                "✅ [DONE] '{}' completado. Base: {:?} | Motor: {} procesados. Total tiempo: {:?}",
-                funcion,
-                start_time.elapsed(),
-                match_count,
-                start_time.elapsed()
-            );
+            // Salida simplificada, el mod.rs hará el resumen final
+            // println!("[DONE] '{}' completado...", funcion);
             logger::log_info(
                 "CARGA",
                 &format!(
@@ -172,7 +187,7 @@ impl Cargador {
         movimientos: &Vec<Movimiento>,
     ) -> Result<Vec<Beneficiario>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBeneficiarios";
-        println!("🚀 [INIT] Iniciando carga FUSIONADA para: '{}'", funcion);
+        // println!("    > Iniciando carga FUSIONADA para: '{}'", funcion);
 
         // 1. Indexar Base y Movimientos para búsqueda rápida
         println!("   - Indexando {} registros Base...", bases.len());
@@ -195,9 +210,21 @@ impl Cargador {
         }
 
         if let Some(client) = &mut self.client {
+            // Lógica Manifiesto: Buscar parámetros dinámicos
+            let mut sql_param = "\"%\"".to_string();
+            if let Some(cfg) = self.config.cargas.get(funcion) {
+                // funcion es &str "IPSFA_CBeneficiarios"
+                if let Some(filter) = &cfg.sql_filter {
+                    let msg = format!("Aplicando filtro a {}: {}", funcion, filter);
+                    // println!("      - Filtro: {}", filter);
+                    logger::log_info("MANIFEST", &msg);
+                    sql_param = filter.clone();
+                }
+            }
+
             let request = tonic::Request::new(DynamicRequest {
                 funcion: funcion.to_string(),
-                parametros: "\"%\"".to_string(),
+                parametros: sql_param,
                 valores: "null".to_string(),
             });
 
@@ -230,7 +257,10 @@ impl Cargador {
                     match serde_json::from_slice::<Vec<Beneficiario>>(&rows_data) {
                         Ok(items) => items,
                         Err(e) => {
-                            eprintln!("⚠️ Error deserializando batch JSON (Beneficiarios): {}", e);
+                            eprintln!(
+                                "[ERROR] Error deserializando batch JSON (Beneficiarios): {}",
+                                e
+                            );
                             Vec::new()
                         }
                     }
@@ -241,7 +271,7 @@ impl Cargador {
             }
 
             println!(
-                "   -> Descarga completada (Red: {:.2?}). Procesando fusión...",
+                "    > Descarga completada (Red: {:.2?}). Fusionando...",
                 net_time
             );
 
@@ -270,7 +300,7 @@ impl Cargador {
                             results.push(item);
                         }
                     }
-                    Err(e) => eprintln!("⚠️ Error en tarea de parsing: {}", e),
+                    Err(e) => eprintln!("[ERROR] Error en tarea de parsing: {}", e),
                 }
             }
 
@@ -285,7 +315,7 @@ impl Cargador {
                 results.len(),
                 chunks
             );
-            println!("✅ [DONE] {}", msg_done);
+            // println!("[DONE] {}", msg_done);
             logger::log_info("CARGA", &msg_done);
 
             // Telemetría
@@ -309,12 +339,23 @@ impl Cargador {
         &mut self,
         funcion: &str,
     ) -> Result<Vec<T>, Box<dyn std::error::Error + Send + Sync>> {
-        println!("🚀 [INIT] Iniciando stream para: '{}'", funcion);
+        // println!("    > Iniciando stream: '{}'", funcion);
 
         if let Some(client) = &mut self.client {
+            // Lógica Manifiesto: Buscar parámetros dinámicos
+            let mut sql_param = "\"%\"".to_string();
+            if let Some(cfg) = self.config.cargas.get(funcion) {
+                if let Some(filter) = &cfg.sql_filter {
+                    let msg = format!("Aplicando filtro a {}: {}", funcion, filter);
+                    // println!("      - Filtro: {}", filter);
+                    logger::log_info("MANIFEST", &msg);
+                    sql_param = filter.clone();
+                }
+            }
+
             let request = tonic::Request::new(DynamicRequest {
                 funcion: funcion.to_string(),
-                parametros: "\"%\"".to_string(),
+                parametros: sql_param,
                 valores: "null".to_string(),
             });
 
@@ -323,7 +364,7 @@ impl Cargador {
             let mut stream = client.execute_dynamic(request).await?.into_inner();
             // let elapsed = start_time.elapsed();
             // println!(
-            //     "    ⏱️  [{}] Conexión establecida en {:?}",
+            //     "    [CONNECTION] [{}] Conexión establecida en {:?}",
             //     funcion, elapsed
             // );
 
@@ -352,7 +393,7 @@ impl Cargador {
                             json_error_logged = true;
                         }
                         eprintln!(
-                            "⚠️ [WARN] Error deserializando batch JSON en '{}': {}",
+                            "[WARN] Error deserializando batch JSON en '{}': {}",
                             funcion, e
                         );
                     }
@@ -374,7 +415,7 @@ impl Cargador {
                 results.len(),
                 chunks
             );
-            println!("✅ [DONE] {}", msg_done);
+            // println!("[DONE] {}", msg_done);
             logger::log_info("CARGA", &msg_done);
 
             // Telemetría
@@ -389,7 +430,7 @@ impl Cargador {
             Ok(results)
         } else {
             println!(
-                "❌ [ERROR] Intento de carga '{}' fallido: Cliente no conectado",
+                "[ERROR] Intento de carga '{}' fallido: Cliente no conectado",
                 funcion
             );
             Err("Cliente no conectado".into())
