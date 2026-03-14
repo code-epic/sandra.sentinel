@@ -1,0 +1,19 @@
+flowchart TD
+    START[Inicio] --> SUMA[Suma garantías originales]
+    SUMA --> FACTOR[FACTOR = monto_aprobado / suma_garantias]
+    FACTOR --> ITER[Para cada beneficiario]
+    
+    ITER --> CALC[anticipo = garantía × FACTOR]
+    CALC --> CONV[Convertir a centavos]
+    CONV --> ES_ULTIMO{Es último registro?}
+    
+    ES_ULTIMO -->|No| TRUNC[Truncar a centavos]
+    TRUNC --> ACUM[acumulado += anticipo]
+    ACUM --> SIGUIENTE[Próximo beneficiario]
+    
+    ES_ULTIMO -->|Sí| AJUSTE[ajuste = monto_aprobado - acumulado]
+    AJUSTE --> GUARDAR[guardar anticipo]
+    GUARDAR --> FIN
+    
+    SIGUIENTE --> ITER
+    FIN --> END[Fin]

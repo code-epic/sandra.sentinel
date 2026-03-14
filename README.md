@@ -290,15 +290,15 @@ sequenceDiagram
     CLI->>K: ejecutar_ciclo_cargo()
     
     par Carga Paralela
-        K->>S: IPSFA_CPrimasFunciones
-        K->>S: IPSFA_CDirectiva
-        K->>S: IPSFA_CConceptos
-        K->>S: IPSFA_CMovimientos
+        K->>S: CPrimasFunciones
+        K->>S: CDirectiva
+        K->>S: CConceptos
+        K->>S: CMovimientos
     end
     
     S-->>K: Datos crudos
     
-    K->>S: IPSFA_CBase
+    K->>S: CBase
     S-->>K: Base datos
     
     K->>M: calcular_primas()
@@ -306,7 +306,7 @@ sequenceDiagram
     
     K->>K: generar_calculos()
     
-    K->>S: IPSFA_CBeneficiarios
+    K->>S: CBeneficiarios
     S-->>K: Beneficiarios stream
     
     K->>K: Fusionar Base+Movimientos
@@ -342,19 +342,19 @@ Para auditorías, pruebas específicas o ejecuciones de producción controladas,
     "monto_aprobado_garantias": 40000000.00
   },
   "cargas": {
-    "IPSFA_CPrimasFunciones": {
+    "CPrimasFunciones": {
       "sql_filter": "f.oidd = 81"
     },
-    "IPSFA_CDirectiva": {
+    "CDirectiva": {
       "sql_filter": "dd.directiva_sueldo_id = 81"
     },
-    "IPSFA_CConceptos": {
+    "CConceptos": {
       "sql_filter": "directiva_sueldo_id = 81"
     },
-    "IPSFA_CBase": {
+    "CBase": {
       "sql_filter": "status_id = 201"
     },
-    "IPSFA_CBeneficiarios": {
+    "CBeneficiarios": {
       "sql_filter": "bnf.status_id = 201"
     }
   }

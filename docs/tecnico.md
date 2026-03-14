@@ -439,24 +439,24 @@ fn test_distribucion_exacta() {
   },
   
   "cargas": {
-    "IPSFA_CPrimasFunciones": {
+    "CPrimasFunciones": {
       "sql_filter": "f.oidd = 81",
       "limit": null,
       "parametros_extra": null
     },
-    "IPSFA_CDirectiva": {
+    "CDirectiva": {
       "sql_filter": "dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0"
     },
-    "IPSFA_CConceptos": {
+    "CConceptos": {
       "sql_filter": "directiva_sueldo_id = 81"
     },
-    "IPSFA_CBase": {
+    "CBase": {
       "sql_filter": "status_id = 201"
     },
-    "IPSFA_CBeneficiarios": {
+    "CBeneficiarios": {
       "sql_filter": "bnf.status_id = 201"
     },
-    "IPSFA_CMovimientos": {
+    "CMovimientos": {
       "sql_filter": ""
     }
   }
@@ -478,12 +478,12 @@ Define filtros SQL para cada fuente de datos:
 
 | Función | Descripción |
 |---------|-------------|
-| IPSFA_CPrimasFunciones | Funciones de prima con fórmulas Rhai |
-| IPSFA_CDirectiva | Tabla de sueldos base por grado/antigüedad |
-| IPSFA_CConceptos | Conceptos de nómina |
-| IPSFA_CBase | Datos base de personal |
-| IPSFA_CBeneficiarios | Beneficiarios principales |
-| IPSFA_CMovimientos | Movimientos financieros |
+| CPrimasFunciones | Funciones de prima con fórmulas Rhai |
+| CDirectiva | Tabla de sueldos base por grado/antigüedad |
+| CConceptos | Conceptos de nómina |
+| CBase | Datos base de personal |
+| CBeneficiarios | Beneficiarios principales |
+| CMovimientos | Movimientos financieros |
 
 ---
 

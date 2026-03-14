@@ -1,0 +1,25 @@
+flowchart TB
+    subgraph Carga["FASE 1: CARGA DE DATOS"]
+        D1[gRPC: PrimasFunciones] --> K[Kernel]
+        D2[gRPC: Directivas] --> K
+        D3[gRPC: Conceptos] --> K
+        D4[gRPC: Movimientos] --> K
+        D5[gRPC: Base] --> K
+    end
+
+    subgraph Calculo["FASE 2: CÁLCULOS"]
+        K --> M[Motor Rhai]
+        M --> C[Primas]
+        C --> GC[Generar Cálculos]
+    end
+
+    subgraph Fusion["FASE 3: FUSIÓN"]
+        GC --> F[Hash Join]
+        F --> B[Beneficiarios]
+        B --> D[Distribución Aportes]
+    end
+
+    subgraph Export["FASE 4: EXPORTACIÓN"]
+        D --> E1[nomina_exportada.csv]
+        D --> E2[aporte_CICLO.csv]
+    end

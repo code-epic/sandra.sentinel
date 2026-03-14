@@ -1,0 +1,13 @@
+flowchart TB
+    subgraph Build["BUILD PHASE: Indexación"]
+        I1[Cargar Base] --> H1[HashMap patterns -> Base]
+        I2[Cargar Movimientos] --> H2[HashMap cedula -> Vec<Movimiento>]
+    end
+
+    subgraph Probe["PROBE PHASE: Sondeo"]
+        S[Stream Beneficiarios] --> F1{Para cada Beneficiario}
+        F1 --> Q1[Buscar Base por patterns]
+        F1 --> Q2[Buscar Movimientos por cedula]
+        Q1 --> M[Fusionar]
+        Q2 --> M
+    end

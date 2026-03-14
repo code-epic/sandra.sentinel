@@ -1,0 +1,16 @@
+flowchart TD
+    START[Inicio: Datos Base] --> TS[Tiempo de Servicio]
+    TS --> AG[Antigüedad Grado]
+    AG --> SB[Sueldo Base]
+    SB --> P[Primas Rhai]
+    P --> SM[Sueldo Mensual]
+    SM --> AA[Alicuota Aguinaldo]
+    SM --> AV[Alicuota Vacaciones]
+    AA --> SI[Sueldo Integral]
+    AV --> SI
+    SI --> ASA[Asignación Antigüedad]
+    ASA --> G[Garantías]
+    ASA --> DA[Días Adicionales]
+    G --> NDB[No Depositado]
+    DA --> NDB
+    NDB --> END[Fin]
