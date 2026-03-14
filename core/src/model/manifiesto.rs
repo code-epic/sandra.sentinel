@@ -80,7 +80,7 @@ impl Manifiesto {
         cargas.insert(
             "IPSFA_CBase".to_string(),
             CargaConfig {
-                sql_filter: Some("status_id = 201".to_string()),
+                sql_filter: Some("status_id = 201 and cedula = '17818665'".to_string()),
                 limit: None,
                 parametros_extra: None,
             },
@@ -88,7 +88,16 @@ impl Manifiesto {
         cargas.insert(
             "IPSFA_CBeneficiarios".to_string(),
             CargaConfig {
-                sql_filter: Some("bnf.status_id = 201".to_string()),
+                sql_filter: Some("bnf.status_id = 201 and bnf.cedula = '17818665'".to_string()),
+                limit: None,
+                parametros_extra: None,
+            },
+        );
+
+        cargas.insert(
+            "IPSFA_CMovimientos".to_string(),
+            CargaConfig {
+                sql_filter: Some("cedula = '17818665'".to_string()),
                 limit: None,
                 parametros_extra: None,
             },

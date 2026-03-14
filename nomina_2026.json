@@ -19,7 +19,10 @@
       "sql_filter": "status_id = 201 "
     },
     "IPSFA_CBeneficiarios": {
-      "sql_filter": "bnf.status_id = 201"
+      "sql_filter": "bnf.status_id = 201 "
+    },
+    "IPSFA_CMovimientos": {
+      "sql_filter": ""
     }
   }
 }

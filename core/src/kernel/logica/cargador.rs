@@ -61,6 +61,7 @@ impl Cargador {
         &mut self,
         directivas: &Vec<Directiva>,
         engine: &crate::calc::motor::SentinelEngine,
+        movimientos: &Vec<Movimiento>,
     ) -> Result<Vec<Base>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBase";
         // println!("    > Iniciando carga: '{}'", funcion);
@@ -111,14 +112,14 @@ impl Cargador {
                 }
             }
 
-            // 2. ⚡️ INVOCACIÓN DEL MOTOR SENTINEL (Cálculo de Nómina Masivo)
+            // 2. ⚡️ INVOCACIÓN DEL MOTOR SENTINEL (Cálculo de Primas Masivo)
             println!(
-                "    > Calculando nómina para {} registros...",
+                "    > Calculando primas para {} registros...",
                 results.len()
             );
 
             // El motor usa Rayon internamente para calcular en paralelo
-            let calculos = engine.calcular_nomina(&results);
+            let calculos = engine.calcular_primas(&results);
 
             // 3. FUSIÓN DE RESULTADOS (Map-Reduce: Volcar cálculos al struct Base)
             // Optimizamos creando un mapa temporal para acceso rápido por patrón/key
@@ -167,6 +168,11 @@ impl Cargador {
                     start_time.elapsed()
                 ),
             );
+
+            // 4. GENERAR CÁLCULOS COMPLETOS (Alicuotas, Sueldo Integral, etc.)
+            println!("    > Generando cálculos de nómina...");
+            crate::calc::calculos::generar_calculos(&mut results, movimientos);
+
             // Telemetría
             crate::kernel::logica::telemetria::record(
                 "CARGA",
@@ -294,6 +300,8 @@ impl Cargador {
                             if let Some(movs_encontrados) = map_mov.get(&item.cedula) {
                                 if let Some(ultimo_mov) = movs_encontrados.last() {
                                     item.movimientos = ultimo_mov.clone();
+                                    // Copiar deposito banco al base
+                                    item.base.deposito_banco = ultimo_mov.cap_banco;
                                 }
                             }
 

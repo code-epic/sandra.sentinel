@@ -146,8 +146,7 @@ pub struct Base {
     #[serde(
         default,
         deserialize_with = "deserialize_string_to_f64",
-        alias = "sueldo",
-        alias = "sueldo_mensual"
+        alias = "sueldo"
     )]
     pub sueldo_base: f64,
 
@@ -175,6 +174,38 @@ pub struct Base {
     // ALMACENAMIENTO DINÁMICO DE PRIMAS CALCULADAS
     #[serde(skip_deserializing)]
     pub calculos: Option<std::collections::HashMap<String, f64>>,
+
+    // Campos calculados de nómina (PHP: KCalculoLote)
+    #[serde(default)]
+    pub sueldo_mensual: f64,
+
+    #[serde(default)]
+    pub aguinaldos: f64,
+
+    #[serde(default)]
+    pub vacaciones: f64,
+
+    #[serde(default)]
+    pub dia_vacaciones: u32,
+
+    #[serde(default)]
+    pub sueldo_integral: f64,
+
+    #[serde(default)]
+    pub asignacion_antiguedad: f64,
+
+    #[serde(default)]
+    pub garantias: f64,
+
+    #[serde(default)]
+    pub dias_adicionales: f64,
+
+    #[serde(default)]
+    pub no_depositado_banco: f64,
+
+    // Campos de movimientos (para cálculos)
+    #[serde(default)]
+    pub deposito_banco: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -269,6 +300,16 @@ impl Default for Base {
             antiguedad: 0,
             antiguedad_grado: 0,
             calculos: None,
+            sueldo_mensual: 0.0,
+            aguinaldos: 0.0,
+            vacaciones: 0.0,
+            dia_vacaciones: 0,
+            sueldo_integral: 0.0,
+            asignacion_antiguedad: 0.0,
+            garantias: 0.0,
+            dias_adicionales: 0.0,
+            no_depositado_banco: 0.0,
+            deposito_banco: 0.0,
         }
     }
 }

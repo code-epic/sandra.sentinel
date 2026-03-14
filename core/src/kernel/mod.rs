@@ -185,10 +185,25 @@ impl Perceptron {
         let directivas_clone = self.directiva.clone();
         let motor_ref = motor_arc.clone();
 
+        // Paso 1: Cargar movimientos primero (necesarios para base)
+        println!("  • {:<20} : {:>10} registros", "Movimientos", "cargando...");
+        let mut c_mov = cargador::Cargador::new(conf_5);
+        c_mov.client = Some(c3);
+        let movimientos_cargados = c_mov.cargar_movimientos().await?;
+        println!(
+            "  • {:<20} : {:>10} registros | OK",
+            "Movimientos",
+            movimientos_cargados.len()
+        );
+
+        // Clonar para pasar al closure
+        let movs_clone = movimientos_cargados.clone();
+
+        // Paso 2: Cargar base (con movimientos) y conceptos en paralelo
         let task_base = tokio::spawn(async move {
             let mut c = cargador::Cargador::new(conf_3);
             c.client = Some(c1);
-            c.cargar_base(&directivas_clone, &motor_ref).await
+            c.cargar_base(&directivas_clone, &motor_ref, &movs_clone).await
         });
 
         let task_conc = tokio::spawn(async move {
@@ -197,19 +212,12 @@ impl Perceptron {
             c.cargar_conceptos().await
         });
 
-        let task_mov = tokio::spawn(async move {
-            let mut c = cargador::Cargador::new(conf_5);
-            c.client = Some(c3);
-            c.cargar_movimientos().await
-        });
-
-        // Esperar a todos
-        let (res_base, res_conc, res_mov) = tokio::join!(task_base, task_conc, task_mov);
+        let (res_base, res_conc) = tokio::join!(task_base, task_conc);
 
         // Procesar resultados
         self.base = res_base??;
         self.conceptos = res_conc??;
-        self.movimientos = res_mov??;
+        self.movimientos = movimientos_cargados;
 
         println!(
             "  • {:<20} : {:>10} registros | OK",

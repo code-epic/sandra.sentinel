@@ -68,8 +68,8 @@ impl SentinelEngine {
         }
     }
 
-    /// Calcula la nómina para un lote de beneficiarios en paralelo
-    pub fn calcular_nomina(&self, base: &Vec<Base>) -> Vec<(String, HashMap<String, f64>)> {
+    /// Calcula las primas para un lote de beneficiarios en paralelo
+    pub fn calcular_primas(&self, base: &Vec<Base>) -> Vec<(String, HashMap<String, f64>)> {
         // Rayon: Iterador paralelo
         base.par_iter()
             .map(|ben| {

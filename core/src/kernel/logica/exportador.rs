@@ -24,7 +24,7 @@ pub fn exportar_nomina_csv(
         "apellidos",
         "sexo",
         "edo_civil",
-        "n_hijos (base)", // Usamos base, que tiene mas sentido
+        "n_hijos (base)",
         "componente_id",
         "grado_id (base)",
         "categoria",
@@ -48,6 +48,17 @@ pub fn exportar_nomina_csv(
         "prima_hijos",
         "prima_profesionalizacion",
         "total_asignaciones_base",
+        // NÓMINA CALCULADA (KCalculoLote)
+        "sueldo_mensual",
+        "aguinaldos",
+        "vacaciones",
+        "dia_vacaciones",
+        "sueldo_integral",
+        "asignacion_antiguedad",
+        "garantias",
+        "dias_adicionales",
+        "deposito_banco",
+        "no_depositado_banco",
         // MOVIMIENTOS
         "cap_banco",
         "anticipo",
@@ -125,6 +136,18 @@ pub fn exportar_nomina_csv(
 
         let total_asig = format!("{:.2}", b.base.total_asignaciones);
 
+        // Nómina Calculada
+        let s_mensual = format!("{:.2}", b.base.sueldo_mensual);
+        let aguinaldos = format!("{:.2}", b.base.aguinaldos);
+        let vacaciones = format!("{:.2}", b.base.vacaciones);
+        let dia_vac = b.base.dia_vacaciones.to_string();
+        let s_integral = format!("{:.2}", b.base.sueldo_integral);
+        let asig_antig = format!("{:.2}", b.base.asignacion_antiguedad);
+        let garantias = format!("{:.2}", b.base.garantias);
+        let dias_adic = format!("{:.2}", b.base.dias_adicionales);
+        let dep_banco = format!("{:.2}", b.base.deposito_banco);
+        let no_depositado = format!("{:.2}", b.base.no_depositado_banco);
+
         // Movimientos
         let cap_banco = format!("{:.2}", b.movimientos.cap_banco);
         let anticipo = format!("{:.2}", b.movimientos.anticipo);
@@ -162,6 +185,18 @@ pub fn exportar_nomina_csv(
             &p_hijos,
             &p_profe,
             &total_asig,
+            // Nómina Calculada
+            &s_mensual,
+            &aguinaldos,
+            &vacaciones,
+            &dia_vac,
+            &s_integral,
+            &asig_antig,
+            &garantias,
+            &dias_adic,
+            &dep_banco,
+            &no_depositado,
+            // Movimientos
             &cap_banco,
             &anticipo,
             &f_cap_banco,
