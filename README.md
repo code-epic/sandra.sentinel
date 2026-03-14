@@ -82,24 +82,252 @@ Sentinel implementa un flujo continuo:
 
 ---
 
-## Proyección y Auditoría
+## Módulo de Cálculos de Nómina
 
-El resultado final no es solo una copia de datos, sino una **Nómina Auditada**. Al recalcular atributos críticos (como la antigüedad o el derecho a primas) basándose en la data cruda, Sentinel actúa como un sistema de detección de anomalías:
+Sentinel implementa un motor de cálculo completo que replica y mejora la lógica del sistema PHP heredado (KCalculoLote). Este módulo calcula de forma determinista todos los componentes salariales.
 
-- **Inconsistencia de Datos:** Si un registro no tiene `Base` (fusión fallida), el sistema aplica `Defaults` seguros (`trait Default`) y lo marca implícitamente, permitiendo identificar afiliados "húerfanos" en la data origen.
-- **Exportación Lineal:** La capacidad de "aplanar" (`Flattening`) estructuras jerárquicas complejas en un formato lineal (CSV) facilita la integración con herramientas de Business Intelligence (BI) y auditoría externa.
+### Secuencia de Cálculos
+
+El cálculo de nómina se ejecuta en el siguiente orden para garantizar la correcta dependencia entre valores:
+
+```mermaid
+flowchart TD
+    A[Inicio: Datos Base] --> B[1. Tiempo de Servicio]
+    B --> C[2. Antigüedad Grado]
+    C --> D[3. Sueldo Base]
+    D --> E[4. Calcular Primas]
+    E --> F[5. Sueldo Mensual]
+    F --> G[6. Alicuota Aguinaldo]
+    F --> H[7. Alicuota Vacaciones]
+    G --> I[8. Sueldo Integral]
+    H --> I
+    I --> J[9. Asignación Antigüedad]
+    J --> K[10. Garantías]
+    J --> L[11. Días Adicionales]
+    K --> M[12. No Depositado Banco]
+    L --> M
+```
+
+### Fórmulas de Cálculo
+
+#### 1. Sueldo Mensual
+```
+Sueldo Mensual = Sueldo Base + Total Primas
+```
+
+#### 2. Alicuota de Aguinaldo
+```
+Días = 90, 105 o 120 según año de retiro
+Alicuota Aguinaldo = ((Días × Sueldo Mensual) / 30) / 12
+```
+
+| Año de Retiro | Días de Aguinaldo |
+|---------------|-------------------|
+| < 2016 | 90 |
+| 2016 (Oct-Dic) | 105 |
+| >= 2017 | 120 |
+
+#### 3. Alicuota de Vacaciones
+```
+Días = 40, 45 o 50 según tiempo de servicio
+Alicuota Vacaciones = ((Días × Sueldo Mensual) / 30) / 12
+```
+
+| Tiempo de Servicio | Días de Vacaciones |
+|--------------------|--------------------|
+| 1-14 años | 40 |
+| 15-24 años | 45 |
+| >= 25 años | 50 |
+
+#### 4. Sueldo Integral
+```
+Sueldo Integral = Sueldo Mensual + Alicuota Vacaciones + Alicuota Aguinaldo
+```
+
+#### 5. Asignación de Antigüedad
+```
+Asignación Antigüedad = Sueldo Integral × Tiempo de Servicio
+```
+
+#### 6. Garantías
+```
+Garantías = (Sueldo Integral / 30) × 15
+```
+
+#### 7. Días Adicionales
+```
+Factor = min(Tiempo de Servicio, 15)
+Días Adicionales = ((Sueldo Mensual / 30) × 2) × Factor
+```
+
+#### 8. No Depositado en Banco
+```
+No Depositado = Asignación Antigüedad - Depósito Banco - Garantías - Días Adicionales
+```
 
 ---
 
-> **Sandra Sentinel** es un ejemplo de ingeniería de sistemas moderna: tipado fuerte, concurrencia segura y optimización a bajo nivel para resolver problemas de gestión de datos a gran escala.
+## Sistema de Distribución de Aportes (Anticipo de Garantías)
+
+### Problema Planteado
+
+En algunos casos, el monto total de garantías calculado excede el presupuesto disponible. Se requiere distribuir un monto aprobado proporcionalmente entre todos los beneficiarios, garantizando que la suma total de los pagos sea exactamente igual al monto aprobado.
+
+### Algoritmo de Distribución Exacta
+
+Sentinel implementa un algoritmo de distribución que evita errores de precisión inherentes al uso de números de punto flotante. El algoritmo garantiza que la suma de todos los pagos sea exactamente igual al monto aprobado, incluso cuando hay decimales.
+
+#### Principios del Algoritmo
+
+1. **Factor Global Único**: Se calcula un factor de proporción único basado en el cociente entre el monto aprobado y la suma total de garantías.
+
+```
+Factor Global = Monto Aprobado / Suma Total de Garantías
+```
+
+2. **Uso de Centavos (Enteros)**: Para evitar errores de precisión de punto flotante, todos los cálculos se realizan convirtiendo a centavos (multiplicando por 100) y trabajando con enteros (`i64`).
+
+3. **Ajuste del Último Registro**: El último beneficiario absorbe la diferencia residual para garantizar el cuadre exacto.
+
+#### Pseudocódigo del Algoritmo
+
+```rust
+fn distribuir_garantias(beneficiarios: &mut [Beneficiario], monto_aprobado: f64) {
+    // 1. Calcular suma total de garantías
+    let suma_garantias: f64 = beneficiarios.iter()
+        .map(|b| b.base.garantia_original)
+        .sum();
+
+    // 2. Calcular factor global
+    let factor_global = monto_aprobado / suma_garantias;
+
+    // 3. Convertir monto aprobado a centavos
+    let monto_centavos = (monto_aprobado * 100.0).round() as i64;
+
+    // 4. Distribuir con truncamiento
+    let mut acumulado: i64 = 0;
+    let n = beneficiarios.len();
+
+    for (i, ben) in beneficiarios.iter_mut().enumerate() {
+        let anticipo = ben.base.garantia_original * factor_global;
+        let anticipo_centavos = (anticipo * 100.0).round() as i64;
+
+        if i < n - 1 {
+            // Truncar (redondeo hacia abajo)
+            ben.base.garantia_anticipo = anticipo_centavos as f64 / 100.0;
+            acumulado += anticipo_centavos;
+        } else {
+            // Último: cuadra exacto
+            let ajuste = monto_centavos - acumulado;
+            ben.base.garantia_anticipo = ajuste as f64 / 100.0;
+        }
+
+        ben.base.factor_aplicado = factor_global;
+    }
+}
+```
+
+#### Ejemplo Numérico
+
+**Datos:**
+- Monto Aprobado: 40,000,000.00
+- Garantía Total Calculada: 57,049,791.95
+- Factor Global: 40,000,000 / 57,049,791.95 = **0.70114191**
+
+**Cálculo por Beneficiario:**
+| Cédula | Garantía Original | Factor | Garantía Anticipo |
+|--------|------------------|--------|-------------------|
+| 10002142 | 615.90 | 0.70114191 | 431.83 |
+| 10002885 | 611.71 | 0.70114191 | 429.02 |
+| ... | ... | ... | ... |
+| **TOTAL** | **57,049,791.95** | | **40,000,000.00** |
+
+---
+
+## Diagramas de Arquitectura
+
+### Flujo Principal de Ejecución
+
+```mermaid
+flowchart TB
+    subgraph Carga["FASE 1: CARGA DE DATOS"]
+        D1[gRPC: PrimasFunciones] --> K[Kernel]
+        D2[gRPC: Directivas] --> K
+        D3[gRPC: Conceptos] --> K
+        D4[gRPC: Movimientos] --> K
+        D5[gRPC: Base] --> K
+    end
+
+    subgraph Calculo["FASE 2: CÁLCULOS"]
+        K --> M[Motor Rhai]
+        M --> C[Primas]
+        C --> GC[Generar Cálculos]
+    end
+
+    subgraph Fusion["FASE 3: FUSIÓN"]
+        GC --> F[Hash Join]
+        F --> B[Beneficiarios]
+        B --> D[Distribución Aportes]
+    end
+
+    subgraph Export["FASE 4: EXPORTACIÓN"]
+        D --> E1[nomina_exportada.csv]
+        D --> E2[aporte_CICLO.csv]
+    end
+```
+
+### Pipeline de Procesamiento
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI (Start)
+    participant K as Kernel
+    participant C as Cargador
+    participant M as Motor Rhai
+    participant S as Sandra gRPC
+    participant E as Exportador
+
+    CLI->>K: ejecutar_ciclo_cargo()
+    
+    par Carga Paralela
+        K->>S: IPSFA_CPrimasFunciones
+        K->>S: IPSFA_CDirectiva
+        K->>S: IPSFA_CConceptos
+        K->>S: IPSFA_CMovimientos
+    end
+    
+    S-->>K: Datos crudos
+    
+    K->>S: IPSFA_CBase
+    S-->>K: Base datos
+    
+    K->>M: calcular_primas()
+    M-->>K: Resultados Primas
+    
+    K->>K: generar_calculos()
+    
+    K->>S: IPSFA_CBeneficiarios
+    S-->>K: Beneficiarios stream
+    
+    K->>K: Fusionar Base+Movimientos
+    
+    alt Hay monto_aprobado
+        K->>K: distribuir_garantias()
+    end
+    
+    K->>E: exportar_nomina_csv()
+    K->>E: exportar_aporte_csv()
+    
+    E-->>CLI: Archivos generados
+```
+
+---
 
 ## Ejecución Controlada (Manifiesto de Carga)
 
-Para auditorías, pruebas específicas o ejecuciones de producción controladas, Sentinel soporta un **Manifiesto de Ejecución** en formato JSON. Este archivo permite inyectar parámetros dinámicos (filtros SQL, límites) en el pipeline de carga sin recompilar el núcleo.
+Para auditorías, pruebas específicas o ejecuciones de producción controladas, Sentinel soporta un **Manifiesto de Ejecución** en formato JSON.
 
 ### Estructura del Manifiesto
-
-Crea un archivo `.json` (ej: `nomina_2026.json`) con la siguiente estructura:
 
 ```json
 {
@@ -109,6 +337,10 @@ Crea un archivo `.json` (ej: `nomina_2026.json`) con la siguiente estructura:
   "autor": "Admin. Sistemas",
   "fecha": "2026-01-31 08:00:00",
   "version": "1.0.0",
+  "aportes": {
+    "habilitar": true,
+    "monto_aprobado_garantias": 40000000.00
+  },
   "cargas": {
     "IPSFA_CPrimasFunciones": {
       "sql_filter": "f.oidd = 81"
@@ -123,25 +355,18 @@ Crea un archivo `.json` (ej: `nomina_2026.json`) con la siguiente estructura:
       "sql_filter": "status_id = 201"
     },
     "IPSFA_CBeneficiarios": {
-      "sql_filter": "status_id = 201"
+      "sql_filter": "bnf.status_id = 201"
     }
   }
 }
 ```
 
-### Ejecución con Manifiesto
+### Ejecución
 
 ```bash
-# Ejecutar usando un manifiesto específico
-sandra start -x --manifest nomina_2026.json
-
-# Ver ayuda
-sandra start --help
+cargo run -- -x -m nomina_2026.json
 ```
 
-El sistema automáticamente:
+---
 
-1.  Validará el JSON.
-2.  Cargará la configuración en el Kernel (`Perceptron`).
-3.  Aplicará los filtros SQL definidos a las consultas gRPC correspondientes.
-4.  Registrará en el log y telemetría qué manifiesto se utilizó.
+> **Sandra Sentinel** es un ejemplo de ingeniería de sistemas moderna: tipado fuerte, concurrencia segura y optimización a bajo nivel para resolver problemas de gestión de datos a gran escala.

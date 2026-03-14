@@ -185,6 +185,14 @@ impl Perceptron {
         let directivas_clone = self.directiva.clone();
         let motor_ref = motor_arc.clone();
 
+        // Obtener monto aprobado de garantías de la config
+        let monto_aprobado = config_ref.aportes.monto_aprobado_garantias;
+        println!(
+            "  > Aporte Config: habilitar={}, monto_aprobado={}",
+            config_ref.aportes.habilitar,
+            monto_aprobado
+        );
+
         // Paso 1: Cargar movimientos primero (necesarios para base)
         println!("  • {:<20} : {:>10} registros", "Movimientos", "cargando...");
         let mut c_mov = cargador::Cargador::new(conf_5);
@@ -203,7 +211,7 @@ impl Perceptron {
         let task_base = tokio::spawn(async move {
             let mut c = cargador::Cargador::new(conf_3);
             c.client = Some(c1);
-            c.cargar_base(&directivas_clone, &motor_ref, &movs_clone).await
+            c.cargar_base(&directivas_clone, &motor_ref, &movs_clone, monto_aprobado).await
         });
 
         let task_conc = tokio::spawn(async move {
@@ -254,8 +262,11 @@ impl Perceptron {
         let mut c_ben = cargador::Cargador::new(config_ref.clone());
         c_ben.client = Some(client.clone());
 
+        // Obtener monto aprobado para distribuir garantías después de fusión
+        let monto_aprobado = config_ref.aportes.monto_aprobado_garantias;
+
         self.beneficiarios = c_ben
-            .cargar_beneficiarios(&self.base, &self.movimientos)
+            .cargar_beneficiarios(&self.base, &self.movimientos, monto_aprobado)
             .await?;
 
         println!(

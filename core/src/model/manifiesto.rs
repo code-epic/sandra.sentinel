@@ -2,6 +2,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AporteConfig {
+    #[serde(default)]
+    pub habilitar: bool,
+
+    #[serde(default)]
+    pub monto_aprobado_garantias: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifiesto {
     pub nombre: String,
@@ -21,8 +30,12 @@ pub struct Manifiesto {
 
     #[serde(default)]
     pub parametros_globales: HashMap<String, String>,
+
     #[serde(default)]
     pub cargas: HashMap<String, CargaConfig>,
+
+    #[serde(default)]
+    pub aportes: AporteConfig,
 }
 
 fn default_autor() -> String {
@@ -113,6 +126,7 @@ impl Manifiesto {
             version: "1.0.0".to_string(),
             parametros_globales: HashMap::new(),
             cargas,
+            aportes: AporteConfig::default(),
         }
     }
 }

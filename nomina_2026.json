@@ -5,6 +5,10 @@
   "autor": "Admin. Sistemas",
   "fecha": "2026-01-31 08:00:00",
   "version": "1.0.0",
+  "aportes": {
+    "habilitar": true,
+    "monto_aprobado_garantias": 40000000.00
+  },
   "cargas": {
     "IPSFA_CPrimasFunciones": {
       "sql_filter": "f.oidd = 81"

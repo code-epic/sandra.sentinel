@@ -212,3 +212,54 @@ pub fn exportar_nomina_csv(
     logger::log_info("EXPORT", "Archivo CSV generado correctamente.");
     Ok(())
 }
+
+pub fn exportar_aporte_csv(
+    beneficiarios: &Vec<Beneficiario>,
+    path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "> Exportando archivo de aporte a CSV en '{}' ({} registros)...",
+        path.display(),
+        beneficiarios.len()
+    );
+
+    let file = File::create(path)?;
+    let mut wtr = csv::Writer::from_writer(file);
+
+    wtr.write_record(&[
+        "cedula",
+        "nombres",
+        "apellidos",
+        "numero_cuenta",
+        "garantia_original",
+        "factor_aplicado",
+        "garantia_anticipo",
+    ])?;
+
+    for b in beneficiarios {
+        let cedula = &b.cedula;
+        let nombres = &b.nombres;
+        let apellidos = &b.apellidos;
+        let cuenta = &b.numero_cuenta;
+        let garantia_original = format!("{:.2}", b.base.garantia_original);
+        let factor = format!("{:.6}", b.base.factor_aplicado);
+        let garantia_anticipo = format!("{:.2}", b.base.garantia_anticipo);
+
+        wtr.write_record(&[
+            cedula,
+            nombres,
+            apellidos,
+            cuenta,
+            &garantia_original,
+            &factor,
+            &garantia_anticipo,
+        ])?;
+    }
+
+    wtr.flush()?;
+    logger::log_info(
+        "EXPORT_APORTE",
+        "Archivo de aporte CSV generado correctamente.",
+    );
+    Ok(())
+}

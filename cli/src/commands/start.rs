@@ -67,7 +67,7 @@ pub async fn execute(
                 println!("  {:<25} : {:>10.2?}", "Tiempo Total", duration);
 
                 if len > 0 {
-                    // EXPORTACION
+                    // EXPORTACION NÓMINA
                     let export_path = std::path::Path::new("nomina_exportada.csv");
                     let t_export = std::time::Instant::now();
 
@@ -100,6 +100,29 @@ pub async fn execute(
                             "OK",
                             export_path.display()
                         );
+                    }
+
+                    // EXPORTACIÓN APORTE (si está habilitado)
+                    if system.kernel.config.aportes.habilitar {
+                        let ciclo = &system.kernel.config.ciclo;
+                        let aporte_filename = format!("aporte_{}.csv", ciclo);
+                        let aporte_path = std::path::Path::new(&aporte_filename);
+
+                        if let Err(e) =
+                            exportador::exportar_aporte_csv(&system.kernel.beneficiarios, aporte_path)
+                        {
+                            let msg = format!("Error exportando CSV de aporte: {}", e);
+                            eprintln!("  {:<25} : {:>10}", "Exportación Aporte", "FALLO");
+                            eprintln!("    └─ [ERROR] {}", msg);
+                            logger::log_error("EXPORT", &msg);
+                        } else {
+                            println!(
+                                "  {:<25} : {:>10} ({})",
+                                "Exportación Aporte",
+                                "OK",
+                                aporte_path.display()
+                            );
+                        }
                     }
                 }
 

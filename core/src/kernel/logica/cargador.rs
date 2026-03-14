@@ -62,6 +62,7 @@ impl Cargador {
         directivas: &Vec<Directiva>,
         engine: &crate::calc::motor::SentinelEngine,
         movimientos: &Vec<Movimiento>,
+        _monto_aprobado_garantias: f64,
     ) -> Result<Vec<Base>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBase";
         // println!("    > Iniciando carga: '{}'", funcion);
@@ -169,9 +170,9 @@ impl Cargador {
                 ),
             );
 
-            // 4. GENERAR CÁLCULOS COMPLETOS (Alicuotas, Sueldo Integral, etc.)
+            // 4. GENERAR CÁLCULOS COMPLETOS (sin distribución de anticipo - se hace en beneficiarios)
             println!("    > Generando cálculos de nómina...");
-            crate::calc::calculos::generar_calculos(&mut results, movimientos);
+            crate::calc::calculos::generar_calculos(&mut results, movimientos, 0.0);
 
             // Telemetría
             crate::kernel::logica::telemetria::record(
@@ -191,6 +192,7 @@ impl Cargador {
         &mut self,
         bases: &Vec<Base>,
         movimientos: &Vec<Movimiento>,
+        monto_aprobado_garantias: f64,
     ) -> Result<Vec<Beneficiario>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBeneficiarios";
         // println!("    > Iniciando carga FUSIONADA para: '{}'", funcion);
@@ -334,6 +336,12 @@ impl Cargador {
                 results.len(),
                 &format!("Lotes: {}", chunks),
             );
+
+            // APLICAR DISTRIBUCIÓN DE GARANTÍAS (después de fusión completa)
+            if monto_aprobado_garantias > 0.0 {
+                println!("    > Aplicando distribución de garantías...");
+                crate::calc::calculos::generar_calculos_beneficiarios(&mut results, monto_aprobado_garantias);
+            }
 
             Ok(results)
         } else {

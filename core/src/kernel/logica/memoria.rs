@@ -206,6 +206,16 @@ pub struct Base {
     // Campos de movimientos (para cálculos)
     #[serde(default)]
     pub deposito_banco: f64,
+
+    // Campos de anticipo de garantías (distribución)
+    #[serde(default)]
+    pub garantia_original: f64,
+
+    #[serde(default)]
+    pub garantia_anticipo: f64,
+
+    #[serde(default)]
+    pub factor_aplicado: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -310,6 +320,9 @@ impl Default for Base {
             dias_adicionales: 0.0,
             no_depositado_banco: 0.0,
             deposito_banco: 0.0,
+            garantia_original: 0.0,
+            garantia_anticipo: 0.0,
+            factor_aplicado: 0.0,
         }
     }
 }
