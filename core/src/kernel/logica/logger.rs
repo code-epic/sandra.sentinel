@@ -4,15 +4,16 @@ use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
-// Bandera global para habilitar/deshabilitar logs
 static LOG_ENABLED: AtomicBool = AtomicBool::new(false);
-
-// Mutex para escritura segura en archivo (evita condiciones de carrera entre threads)
 static LOG_FILE_LOCK: Mutex<()> = Mutex::new(());
+static LOG_DESTINO: Mutex<String> = Mutex::new(String::new());
 
-pub fn init(enabled: bool) {
+pub fn init(enabled: bool, destino: &str) {
     LOG_ENABLED.store(enabled, Ordering::Relaxed);
     if enabled {
+        if let Ok(mut dest) = LOG_DESTINO.lock() {
+            *dest = destino.to_string();
+        }
         println!("[Logger] Sistema de logs activado. Archivo: sandra_sentinel.log");
         log_system("Sistema de Logs Iniciado");
     }
@@ -22,12 +23,21 @@ pub fn is_enabled() -> bool {
     LOG_ENABLED.load(Ordering::Relaxed)
 }
 
+fn get_log_path() -> String {
+    if let Ok(dest) = LOG_DESTINO.lock() {
+        if dest.is_empty() || *dest == "." {
+            return "sandra_sentinel.log".to_string();
+        }
+        return format!("{}/sandra_sentinel.log", dest);
+    }
+    "sandra_sentinel.log".to_string()
+}
+
 fn write_log(level: &str, category: &str, message: &str) {
     if !is_enabled() {
         return;
     }
 
-    // Filtro: No registrar INFO de CARGA (reducir ruido, ya está en telemetría)
     if level == "INFO" && category == "CARGA" {
         return;
     }
@@ -35,18 +45,17 @@ fn write_log(level: &str, category: &str, message: &str) {
     let now = Local::now().format("%Y-%m-%d %H:%M:%S");
     let log_line = format!("{} | {:<5} | {:<10} | {}\n", now, level, category, message);
 
-    // Salida a consola (opcional, solo errores o warns)
     if level == "ERROR" {
         eprint!("{}", log_line);
     }
 
-    // Escritura en archivo
     let _guard = LOG_FILE_LOCK.lock().unwrap();
+    let log_path = get_log_path();
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
         .write(true)
         .append(true)
-        .open("sandra_sentinel.log")
+        .open(&log_path)
     {
         let _ = file.write_all(log_line.as_bytes());
     }

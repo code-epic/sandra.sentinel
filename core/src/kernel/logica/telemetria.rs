@@ -45,16 +45,27 @@ pub fn record(category: &str, name: &str, duration: Duration, records: usize, ex
     }
 }
 
-pub fn generate_report() {
+pub fn generate_report(destino: &str) {
     if !is_enabled() {
         return;
     }
 
-    let report_path = "sandra_metrics_report.txt";
-    println!("> Generando reporte de sensores en '{}'...", report_path);
+    let nombre_reporte = "sandra_metrics_report.txt";
+    let reporte_path = if destino == "." || destino.is_empty() {
+        std::path::PathBuf::from(nombre_reporte)
+    } else {
+        std::path::PathBuf::from(destino).join(nombre_reporte)
+    };
+
+    let nombre_reporte = reporte_path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| reporte_path.display().to_string());
+
+    println!("> Generando reporte de sensores en '{}'...", nombre_reporte);
 
     if let Ok(store) = METRICS_STORE.lock() {
-        let mut file = File::create(report_path).expect("No se pudo crear reporte");
+        let mut file = File::create(&reporte_path).expect("No se pudo crear reporte");
 
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
         writeln!(file, "SANDRA SENTINEL - REPORTE DE TELEMETRIA").unwrap();

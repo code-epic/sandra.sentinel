@@ -11,6 +11,26 @@ pub struct AporteConfig {
     pub monto_aprobado_garantias: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SalidaConfig {
+    #[serde(default = "default_carpeta_destino")]
+    pub destino: String,
+
+    #[serde(default)]
+    pub compresion: bool,
+
+    #[serde(default = "default_nivel_compresion")]
+    pub nivel_compresion: i32,
+}
+
+fn default_carpeta_destino() -> String {
+    ".".to_string()
+}
+
+fn default_nivel_compresion() -> i32 {
+    3
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifiesto {
     pub nombre: String,
@@ -36,6 +56,9 @@ pub struct Manifiesto {
 
     #[serde(default)]
     pub aportes: AporteConfig,
+
+    #[serde(default)]
+    pub salida: SalidaConfig,
 }
 
 fn default_autor() -> String {
@@ -127,6 +150,7 @@ impl Manifiesto {
             parametros_globales: HashMap::new(),
             cargas,
             aportes: AporteConfig::default(),
+            salida: SalidaConfig::default(),
         }
     }
 }

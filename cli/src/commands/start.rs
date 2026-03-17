@@ -3,13 +3,28 @@ use sandra_core::System;
 
 use sandra_core::model::Manifiesto;
 
+use chrono;
+
+fn path_relative(full_path: &str, destino: &str) -> String {
+    if destino == "." || destino.is_empty() {
+        std::path::Path::new(full_path)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| full_path.to_string())
+    } else {
+        std::path::Path::new(full_path)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| full_path.to_string())
+    }
+}
+
 pub async fn execute(
     execute: bool,
     log: bool,
     sensors: bool,
     manifest_path: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    logger::init(log);
     telemetria::init(sensors);
 
     // --- BANNER DE INICIO ---
@@ -20,13 +35,22 @@ pub async fn execute(
     let mut system = System::init(); // Restaurado
 
     // Cargar manifiesto si se especificó
+    let mut destino = String::from("."); // Default destination
     if let Some(path) = manifest_path {
-        println!("> Cargando manifiesto desde '{}'...", path);
+        let nombre_manifest = std::path::Path::new(&path)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.clone());
+        println!("> Cargando manifiesto desde '{}'...", nombre_manifest);
         match Manifiesto::cargar_desde_archivo(&path) {
             Ok(m) => {
                 println!("{:<20} : {}", "[CONFIG] Manifiesto", m.nombre);
                 println!("{:<20} : {}", "[CICLO ] Periodo", m.ciclo);
                 println!("{:<20} : {}", "[INFO  ] Descripción", m.descripcion);
+                
+                destino = m.salida.destino.clone();
+                logger::init(log, &destino);
+                
                 system.kernel.config = m;
             }
             Err(e) => {
@@ -36,6 +60,7 @@ pub async fn execute(
         }
     } else {
         println!("{:<20} : {}", "[CONFIG] Modo", "Estándar (Sin manifiesto)");
+        logger::init(log, &destino);
     }
     println!("{:-<80}", "");
 
@@ -67,70 +92,146 @@ pub async fn execute(
                 println!("  {:<25} : {:>10.2?}", "Tiempo Total", duration);
 
                 if len > 0 {
+                    // Obtener configuración de salida
+                    let ciclo = &system.kernel.config.ciclo;
+                    let destino = &system.kernel.config.salida.destino;
+                    let comprimir = system.kernel.config.salida.compresion;
+                    let nivel = system.kernel.config.salida.nivel_compresion;
+
+                    // Vector para almacenar resultados y generar manifest
+                    let mut resultados_export: Vec<exportador::ResultadoExport> = Vec::new();
+
                     // EXPORTACION NÓMINA
-                    let export_path = std::path::Path::new("nomina_exportada.csv");
                     let t_export = std::time::Instant::now();
 
-                    if let Err(e) =
-                        exportador::exportar_nomina_csv(&system.kernel.beneficiarios, export_path)
-                    {
-                        let msg = format!("Error exportando CSV: {}", e);
-                        eprintln!("  {:<25} : {:>10}", "Exportación CSV", "FALLO");
-                        eprintln!("    └─ [ERROR] {}", msg);
-                        logger::log_error("EXPORT", &msg);
-                    } else {
-                        // Registrar métrica
-                        let size_mb = if let Ok(meta) = std::fs::metadata(export_path) {
-                            meta.len() as f64 / 1_048_576.0
-                        } else {
-                            0.0
-                        };
+                    match exportador::exportar_nomina_csv(
+                        &system.kernel.beneficiarios,
+                        ciclo,
+                        destino,
+                        comprimir,
+                        nivel,
+                    ) {
+                        Ok(resultado) => {
+                            telemetria::record(
+                                "EXPORT",
+                                "CSV Nómina",
+                                t_export.elapsed(),
+                                system.kernel.beneficiarios.len(),
+                                &format!("{} bytes", resultado.tamano_original),
+                            );
 
-                        telemetria::record(
-                            "EXPORT",
-                            "CSV Nómina",
-                            t_export.elapsed(),
-                            system.kernel.beneficiarios.len(),
-                            &format!("{:.2} MB", size_mb),
-                        );
+                            println!(
+                                "  {:<25} : {:>10} ({})",
+                                "Exportación Nómina",
+                                "OK",
+                                path_relative(&resultado.ruta, &destino)
+                            );
 
-                        println!(
-                            "  {:<25} : {:>10} ({})",
-                            "Exportación CSV",
-                            "OK",
-                            export_path.display()
-                        );
+                            // Mostrar hash SHA256
+                            if let Some(hash) = &resultado.hash_sha256 {
+                                println!(
+                                    "    {:<23} : SHA256: {}",
+                                    "Firma Digital",
+                                    hash
+                                );
+                            }
+
+                            if resultado.compresion_aplicada {
+                                println!(
+                                    "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
+                                    "Compresión",
+                                    resultado.tamano_original,
+                                    resultado.tamano_comprimido.unwrap_or(0)
+                                );
+                            }
+
+                            resultados_export.push(resultado);
+                        }
+                        Err(e) => {
+                            let msg = format!("Error exportando CSV: {}", e);
+                            eprintln!("  {:<25} : {:>10}", "Exportación Nómina", "FALLO");
+                            eprintln!("    └─ [ERROR] {}", msg);
+                            logger::log_error("EXPORT", &msg);
+                        }
                     }
 
                     // EXPORTACIÓN APORTE (si está habilitado)
                     if system.kernel.config.aportes.habilitar {
-                        let ciclo = &system.kernel.config.ciclo;
-                        let aporte_filename = format!("aporte_{}.csv", ciclo);
-                        let aporte_path = std::path::Path::new(&aporte_filename);
+                        let t_export_aporte = std::time::Instant::now();
 
-                        if let Err(e) =
-                            exportador::exportar_aporte_csv(&system.kernel.beneficiarios, aporte_path)
-                        {
-                            let msg = format!("Error exportando CSV de aporte: {}", e);
-                            eprintln!("  {:<25} : {:>10}", "Exportación Aporte", "FALLO");
-                            eprintln!("    └─ [ERROR] {}", msg);
-                            logger::log_error("EXPORT", &msg);
-                        } else {
-                            println!(
-                                "  {:<25} : {:>10} ({})",
-                                "Exportación Aporte",
-                                "OK",
-                                aporte_path.display()
-                            );
+                        match exportador::exportar_aporte_csv(
+                            &system.kernel.beneficiarios,
+                            ciclo,
+                            destino,
+                            comprimir,
+                            nivel,
+                        ) {
+                            Ok(resultado) => {
+                                telemetria::record(
+                                    "EXPORT",
+                                    "CSV Aporte",
+                                    t_export_aporte.elapsed(),
+                                    system.kernel.beneficiarios.len(),
+                                    &format!("{} bytes", resultado.tamano_original),
+                                );
+
+                                println!(
+                                    "  {:<25} : {:>10} ({})",
+                                    "Exportación Aporte",
+                                    "OK",
+                                    path_relative(&resultado.ruta, &destino)
+                                );
+
+                                // Mostrar hash SHA256
+                                if let Some(hash) = &resultado.hash_sha256 {
+                                    println!(
+                                        "    {:<23} : SHA256: {}",
+                                        "Firma Digital",
+                                        hash
+                                    );
+                                }
+
+                                if resultado.compresion_aplicada {
+                                    println!(
+                                        "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
+                                        "Compresión",
+                                        resultado.tamano_original,
+                                        resultado.tamano_comprimido.unwrap_or(0)
+                                    );
+                                }
+
+                                resultados_export.push(resultado);
+                            }
+                            Err(e) => {
+                                let msg = format!("Error exportando CSV de aporte: {}", e);
+                                eprintln!("  {:<25} : {:>10}", "Exportación Aporte", "FALLO");
+                                eprintln!("    └─ [ERROR] {}", msg);
+                                logger::log_error("EXPORT", &msg);
+                            }
+                        }
+                    }
+
+                    // GENERAR MANIFEST
+                    if !resultados_export.is_empty() {
+                        let id_operacion = format!("NOM-{}-{}", ciclo, chrono::Local::now().format("%Y%m%d-%H%M"));
+                        
+                        if let Err(e) = exportador::generar_manifest(
+                            &id_operacion,
+                            destino,
+                            &resultados_export,
+                        ) {
+                            eprintln!("  {:<25} : {:>10}", "Manifest", "FALLO");
+                            eprintln!("    └─ [ERROR] {}", e);
                         }
                     }
                 }
 
                 // Generar reporte final de telemetría
-                telemetria::generate_report();
+                telemetria::generate_report(&destino);
                 println!(
-                    "  {:<25} : {:>10} (sandra_metrics_report.txt)",
-                    "Reporte Sensores", "GENERADO"
+                    "  {:<25} : {:>10} ({})",
+                    "Reporte Sensores", "GENERADO",
+                    path_relative(&format!("{}/sandra_metrics_report.txt", &destino), &destino)
                 );
                 println!("{:=<80}\n", "");
             }
