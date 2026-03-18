@@ -1,3 +1,4 @@
+use sandra_core::banco::{self, TipoArchivo};
 use sandra_core::kernel::logica::{exportador, logger, telemetria};
 use sandra_core::System;
 
@@ -207,6 +208,103 @@ pub async fn execute(
                                 eprintln!("  {:<25} : {:>10}", "Exportación Aporte", "FALLO");
                                 eprintln!("    └─ [ERROR] {}", msg);
                                 logger::log_error("EXPORT", &msg);
+                            }
+                        }
+                    }
+
+                    // GENERAR ARCHIVOS TXT BANCARIOS
+                    if let Some(format_txt) = &system.kernel.config.salida.format_txt {
+                        let bancos = &system.kernel.config.salida.bancos;
+                        if !bancos.is_empty() {
+                            println!("\n{:-<80}", "");
+                            println!("{:^80}", "GENERANDO ARCHIVOS TXT BANCARIOS");
+                            println!("{:-<80}\n", "");
+
+                            let tipo = TipoArchivo::from_str(format_txt).unwrap_or(TipoArchivo::Aporte);
+                            let comprimir = system.kernel.config.salida.compresion;
+                            let nivel = system.kernel.config.salida.nivel_compresion;
+                            
+                            for codigo_banco in bancos {
+                                println!("> Procesando banco: {}...", codigo_banco);
+                                
+                                match codigo_banco.as_str() {
+                                    "0102" => {
+                                        match banco::venezuela::generar_txt_venezuela(
+                                            &system.kernel.beneficiarios,
+                                            tipo,
+                                            ciclo,
+                                            destino,
+                                            100.0,
+                                            comprimir,
+                                            nivel,
+                                        ) {
+                                            Ok(resultado) => {
+                                                println!(
+                                                    "  {:<25} : {:>10} ({})",
+                                                    "TXT Venezuela",
+                                                    "OK",
+                                                    path_relative(&resultado.ruta, destino)
+                                                );
+                                                resultados_export.push(resultado);
+                                            }
+                                            Err(e) => {
+                                                eprintln!("  {:<25} : {:>10}", "TXT Venezuela", "FALLO");
+                                                eprintln!("    └─ [ERROR] {}", e);
+                                            }
+                                        }
+                                    }
+                                    "0177" => {
+                                        match banco::banfanb::generar_txt_banfanb(
+                                            &system.kernel.beneficiarios,
+                                            ciclo,
+                                            destino,
+                                            "0131",
+                                            comprimir,
+                                            nivel,
+                                        ) {
+                                            Ok(resultado) => {
+                                                println!(
+                                                    "  {:<25} : {:>10} ({})",
+                                                    "TXT Banfanb",
+                                                    "OK",
+                                                    path_relative(&resultado.ruta, destino)
+                                                );
+                                                resultados_export.push(resultado);
+                                            }
+                                            Err(e) => {
+                                                eprintln!("  {:<25} : {:>10}", "TXT Banfanb", "FALLO");
+                                                eprintln!("    └─ [ERROR] {}", e);
+                                            }
+                                        }
+                                    }
+                                    "0175" => {
+                                        match banco::bicentenario::generar_txt_bicentenario(
+                                            &system.kernel.beneficiarios,
+                                            ciclo,
+                                            destino,
+                                            "0175",
+                                            comprimir,
+                                            nivel,
+                                        ) {
+                                            Ok(resultado) => {
+                                                println!(
+                                                    "  {:<25} : {:>10} ({})",
+                                                    "TXT Bicentenario",
+                                                    "OK",
+                                                    path_relative(&resultado.ruta, destino)
+                                                );
+                                                resultados_export.push(resultado);
+                                            }
+                                            Err(e) => {
+                                                eprintln!("  {:<25} : {:>10}", "TXT Bicentenario", "FALLO");
+                                                eprintln!("    └─ [ERROR] {}", e);
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        println!("  {:<25} : {:>10} (banco no soportado)", "TXT", "SKIP");
+                                    }
+                                }
                             }
                         }
                     }

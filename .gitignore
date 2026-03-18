@@ -1,6 +1,7 @@
 # Rust Build Artifacts
 target/
 migracion/
+nm/
 **/*.rs.bk
 
 # Generated Data Exports

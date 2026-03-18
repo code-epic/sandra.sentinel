@@ -8,7 +8,9 @@
   "salida": {
     "destino": "./nm",
     "compresion": true,
-    "nivel_compresion": 3
+    "nivel_compresion": 3,
+    "format_txt": "aporte",
+    "bancos": ["0102"]
   },
   "aportes": {
     "habilitar": true,

@@ -21,6 +21,12 @@ pub struct SalidaConfig {
 
     #[serde(default = "default_nivel_compresion")]
     pub nivel_compresion: i32,
+
+    #[serde(default)]
+    pub format_txt: Option<String>, // "apertura" | "aporte" | "retiro" | "mixto"
+
+    #[serde(default)]
+    pub bancos: Vec<String>, // Códigos de banco: ["0102", "0177", "0175", ...]
 }
 
 fn default_carpeta_destino() -> String {
