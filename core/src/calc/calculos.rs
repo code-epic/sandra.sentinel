@@ -74,7 +74,7 @@ pub fn generar_calculos(
     }
 }
 
-/// Algoritmo de distribución exacta usando centavos para evitar errores de punto flotante
+/// Algoritmo de distribución exacta para evitar errores de punto flotante
 /// El último registro absorbe la diferencia para cuadrar exactamente el monto aprobado
 fn aplicar_distribucion_exacta(bases: &mut [Base], monto_aprobado: f64) {
     // Calcular suma total de garantías originales
@@ -87,8 +87,8 @@ fn aplicar_distribucion_exacta(bases: &mut [Base], monto_aprobado: f64) {
     // Factor global: monto_aprobado / suma_total_garantias
     let factor_global = monto_aprobado / suma_garantias;
 
-    // Convertir a centavos para evitar errores de punto flotante
-    let monto_aprobado_centavos = (monto_aprobado * 100.0).round() as i64;
+    // Convertir a multiplicado para evitar errores de punto flotante
+    let monto_aprobado_multiplicado = (monto_aprobado * 100.0).round() as i64;
 
     let mut acumulado: i64 = 0;
     let n = bases.len();
@@ -96,16 +96,16 @@ fn aplicar_distribucion_exacta(bases: &mut [Base], monto_aprobado: f64) {
     for (i, base) in bases.iter_mut().enumerate() {
         // Calcular anticipo basado en factor global
         let anticipo_calculado = base.garantia_original * factor_global;
-        let anticipo_centavos = (anticipo_calculado * 100.0).round() as i64;
+        let anticipo_multiplicado = (anticipo_calculado * 100.0).round() as i64;
 
         if i < n - 1 {
-            // Primeros N-1: truncado a centavos (redondeo hacia abajo)
-            base.garantia_anticipo = anticipo_centavos as f64 / 100.0;
-            acumulado += anticipo_centavos;
+            // Primeros N-1: truncado a multiplicado (redondeo hacia abajo)
+            base.garantia_anticipo = anticipo_multiplicado as f64 / 100.0;
+            acumulado += anticipo_multiplicado;
         } else {
             // Último registro: cuadra exactamente el monto aprobado
-            let anticipo_final_centavos = monto_aprobado_centavos - acumulado;
-            base.garantia_anticipo = anticipo_final_centavos as f64 / 100.0;
+            let anticipo_final_multiplicado = monto_aprobado_multiplicado - acumulado;
+            base.garantia_anticipo = anticipo_final_multiplicado as f64 / 100.0;
         }
 
         // Guardar factor global aplicado (para referencia/auditoría)
@@ -298,8 +298,8 @@ pub fn generar_calculos_beneficiarios(
         monto_aprobado, suma_garantias, factor_global
     );
 
-    // Convertir a centavos
-    let monto_aprobado_centavos = (monto_aprobado * 100.0).round() as i64;
+    // Convertir a multiplicado
+    let monto_aprobado_multiplicado = (monto_aprobado * 100.0).round() as i64;
 
     let mut acumulado: i64 = 0;
     let n = beneficiarios.len();
@@ -307,15 +307,15 @@ pub fn generar_calculos_beneficiarios(
     for (i, ben) in beneficiarios.iter_mut().enumerate() {
         let garantia_original = ben.base.garantia_original;
         let anticipo_calculado = garantia_original * factor_global;
-        let anticipo_centavos = (anticipo_calculado * 100.0).round() as i64;
+        let anticipo_multiplicado = (anticipo_calculado * 100.0).round() as i64;
 
         if i < n - 1 {
-            ben.base.garantia_anticipo = anticipo_centavos as f64 / 100.0;
-            acumulado += anticipo_centavos;
+            ben.base.garantia_anticipo = anticipo_multiplicado as f64 / 100.0;
+            acumulado += anticipo_multiplicado;
         } else {
             // Último: cuadra exacto
-            let anticipo_final_centavos = monto_aprobado_centavos - acumulado;
-            ben.base.garantia_anticipo = anticipo_final_centavos as f64 / 100.0;
+            let anticipo_final_multiplicado = monto_aprobado_multiplicado - acumulado;
+            ben.base.garantia_anticipo = anticipo_final_multiplicado as f64 / 100.0;
         }
 
         ben.base.factor_aplicado = factor_global;

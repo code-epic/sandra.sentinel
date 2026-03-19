@@ -1,0 +1,164 @@
+{
+  "csv_nomina": {
+    "RUST": {
+      "descripcion": "Nómina de pensiones (implementación Rust)",
+      "separador": ",",
+      "archivo": "nomina_{ciclo}.csv",
+      "encabezados": [
+        {"posicion": 1, "campo": "cedula", "descripcion": "Cédula de identidad", "tipo": "string"},
+        {"posicion": 2, "campo": "nombres", "descripcion": "Nombres del beneficiario", "tipo": "string"},
+        {"posicion": 3, "campo": "apellidos", "descripcion": "Apellidos del beneficiario", "tipo": "string"},
+        {"posicion": 4, "campo": "sexo", "descripcion": "Sexo (M/F)", "tipo": "string"},
+        {"posicion": 5, "campo": "edo_civil", "descripcion": "Estado civil", "tipo": "string"},
+        {"posicion": 6, "campo": "n_hijos (base)", "descripcion": "Número de hijos", "tipo": "integer"},
+        {"posicion": 7, "campo": "componente_id", "descripcion": "ID del componente militar", "tipo": "integer"},
+        {"posicion": 8, "campo": "grado_id (base)", "descripcion": "ID del grado", "tipo": "integer"},
+        {"posicion": 9, "campo": "categoria", "descripcion": "Categoría", "tipo": "string"},
+        {"posicion": 10, "campo": "status_id", "descripcion": "ID de estatus", "tipo": "integer"},
+        {"posicion": 11, "campo": "status", "descripcion": "Descripción de estatus", "tipo": "string"},
+        {"posicion": 12, "campo": "st_no_ascenso", "descripcion": "Flag de no ascenso", "tipo": "integer"},
+        {"posicion": 13, "campo": "fecha_ingreso", "descripcion": "Fecha de ingreso", "tipo": "date"},
+        {"posicion": 14, "campo": "fecha_ultimo_ascenso", "descripcion": "Fecha último ascenso", "tipo": "date"},
+        {"posicion": 15, "campo": "fecha_retiro", "descripcion": "Fecha de retiro", "tipo": "date"},
+        {"posicion": 16, "campo": "anio_reconocido", "descripcion": "Años reconocidos", "tipo": "integer"},
+        {"posicion": 17, "campo": "mes_reconocido", "descripcion": "Meses reconocidos", "tipo": "integer"},
+        {"posicion": 18, "campo": "dia_reconocido", "descripcion": "Días reconocidos", "tipo": "integer"},
+        {"posicion": 19, "campo": "antiguedad_total (decimal)", "descripcion": "Antigüedad total (decimal)", "tipo": "decimal"},
+        {"posicion": 20, "campo": "antiguedad_grado (anos)", "descripcion": "Antigüedad en grado (años)", "tipo": "decimal"},
+        {"posicion": 21, "campo": "sueldo_base", "descripcion": "Sueldo base", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 22, "campo": "prima_antiguedad", "descripcion": "Prima por antigüedad", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 23, "campo": "prima_hijos", "descripcion": "Prima por hijos", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 24, "campo": "prima_profesionalizacion", "descripcion": "Prima profesionalización", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 25, "campo": "total_asignaciones_base", "descripcion": "Total asignaciones base", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 26, "campo": "sueldo_mensual", "descripcion": "Sueldo mensual", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 27, "campo": "aguinaldos", "descripcion": "Aguinaldos", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 28, "campo": "vacaciones", "descripcion": "Vacaciones", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 29, "campo": "dia_vacaciones", "descripcion": "Días de vacaciones", "tipo": "integer"},
+        {"posicion": 30, "campo": "sueldo_integral", "descripcion": "Sueldo integral", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 31, "campo": "asignacion_antiguedad", "descripcion": "Asignación de antigüedad", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 32, "campo": "garantias", "descripcion": "Garantías", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 33, "campo": "dias_adicionales", "descripcion": "Días adicionales", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 34, "campo": "deposito_banco", "descripcion": "Depósito en banco", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 35, "campo": "no_depositado_banco", "descripcion": "No depositado en banco", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 36, "campo": "cap_banco", "descripcion": "Capital en banco", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 37, "campo": "anticipo", "descripcion": "Anticipos", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 38, "campo": "f_cap_banco", "descripcion": "Fórmula capital banco", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 39, "campo": "dif_asi_anti", "descripcion": "Diferencia asignación/anticipo", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 40, "campo": "anticipo_retroactivo", "descripcion": "Anticipo retroactivo", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 41, "campo": "dep_adicional", "descripcion": "Depósito adicional", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 42, "campo": "dep_garantia", "descripcion": "Depósito garantía", "tipo": "decimal", "formato": "%.2f"},
+        {"posicion": 43, "campo": "patterns", "descripcion": "Patrones detectados", "tipo": "string"}
+      ],
+      "origen": "Rust - core/src/kernel/logica/exportador.rs:exportar_nomina_csv"
+    },
+    "PHP": {
+      "RCP": {
+        "descripcion": "Nómina de Retirados con Pensión - Titulares militares que reciben pensión directa calculada como sueldo neto × porcentaje asignado según tiempo de servicio, grado y normativa vigente",
+        "tipo_beneficiario": "titular",
+        "es_titular": true,
+        "calculo": "sueldo_integral × porcentaje_pension",
+        "notas": "El titular militar retirado recibe directamente su pensión según el porcentaje establecido por ley (generalmente 100% del sueldo integral o proporcional según años de servicio)",
+        "separador": ";",
+        "archivo": "nomina_{ciclo}.csv",
+        "encabezados": [
+          {"posicion": 1, "campo": "CEDULA", "descripcion": "Cédula de identidad"},
+          {"posicion": 2, "campo": "APELLIDOS", "descripcion": "Apellidos del beneficiario"},
+          {"posicion": 3, "campo": "NOMBRES", "descripcion": "Nombres del beneficiario"},
+          {"posicion": 4, "campo": "TIPO", "descripcion": "Tipo de cuenta (Ahorro/Corriente)"},
+          {"posicion": 5, "campo": "BANCO", "descripcion": "Código del banco"},
+          {"posicion": 6, "campo": "NUMERO_CUENTA", "descripcion": "Número de cuenta bancaria (con apostrofo)"},
+          {"posicion": 7, "campo": "FECHA_INGRESO", "descripcion": "Fecha de ingreso a la FANB"},
+          {"posicion": 8, "campo": "FECHA_ASCENSO", "descripcion": "Fecha del último ascenso"},
+          {"posicion": 9, "campo": "FECHA_RETIRO", "descripcion": "Fecha de retiro"},
+          {"posicion": 10, "campo": "COMPONENTE", "descripcion": "ID del componente militar"},
+          {"posicion": 11, "campo": "GRADO", "descripcion": "Código del grado"},
+          {"posicion": 12, "campo": "GRADO_DESC", "descripcion": "Descripción del grado"},
+          {"posicion": 13, "campo": "TIEMPO_SERVICIO", "descripcion": "Tiempo de servicio"},
+          {"posicion": 14, "campo": "ANTIGUEDAD", "descripcion": "Antigüedad en el grado"},
+          {"posicion": 15, "campo": "NUM_HIJOS", "descripcion": "Número de hijos"},
+          {"posicion": 16, "campo": "PORCENTAJE", "descripcion": "Porcentaje de pensión"},
+          {"posicion": 17, "campo": "FECHA_NACIMIENTO", "descripcion": "Fecha de nacimiento"}
+        ],
+        "campos_dinamicos": {
+          "conceptos": "Se agregan según la configuración de la directiva en _MapWNomina['Concepto']",
+          "medida_judicial": "Monto de medida judicial (si aplica)",
+          "caja_ahorro": "Monto de caja de ahorro (si aplica)"
+        },
+        "campos_finales": [
+          {"posicion": "N-2", "campo": "ASIGNACION", "descripcion": "Total de asignaciones"},
+          {"posicion": "N-1", "campo": "DEDUCCION", "descripcion": "Total de deducciones"},
+          {"posicion": "N", "campo": "NETO", "descripcion": "Monto neto a pagar"}
+        ],
+        "origen": "PHP - migracion/pensiones-kernel/models/kernel/KCargador.php"
+      },
+      "FCP": {
+        "descripcion": "Nómina de Fallecidos con Pensión - Sobrevivientes/familiares de militares fallecidos que reciben distribución porcentual del beneficio del titular fallecido",
+        "tipo_beneficiario": "sobreviviente",
+        "es_titular": false,
+        "calculo": "(sueldo_integral × porcentaje_pension_titular) × porcentaje_familiar",
+        "notas": "Los familiares (cónyuge, hijos, ascendientes) reciben porcentajes del beneficio total del titular fallecido según la Ley de Pensiones Militares. Ej: cónyuge 50%, hijos comparten 50%, etc.",
+        "separador": ";",
+        "archivo": "nomina_{ciclo}.csv",
+        "encabezados": [
+          {"posicion": 1, "campo": "CEDULA", "descripcion": "Cédula de identidad"},
+          {"posicion": 2, "campo": "APELLIDOS", "descripcion": "Apellidos del beneficiario"},
+          {"posicion": 3, "campo": "NOMBRES", "descripcion": "Nombres del beneficiario"},
+          {"posicion": 4, "campo": "FECHA_INGRESO", "descripcion": "Fecha de ingreso a la FANB"},
+          {"posicion": 5, "campo": "FECHA_ASCENSO", "descripcion": "Fecha del último ascenso"},
+          {"posicion": 6, "campo": "FECHA_RETIRO", "descripcion": "Fecha de retiro"},
+          {"posicion": 7, "campo": "COMPONENTE", "descripcion": "ID del componente militar"},
+          {"posicion": 8, "campo": "GRADO", "descripcion": "Código del grado"},
+          {"posicion": 9, "campo": "GRADO_DESC", "descripcion": "Descripción del grado"},
+          {"posicion": 10, "campo": "TIEMPO_SERVICIO", "descripcion": "Tiempo de servicio"},
+          {"posicion": 11, "campo": "ANTIGUEDAD", "descripcion": "Antigüedad en el grado"},
+          {"posicion": 12, "campo": "NUM_HIJOS", "descripcion": "Número de hijos"},
+          {"posicion": 13, "campo": "PORCENTAJE", "descripcion": "Porcentaje de pensión"}
+        ],
+        "campos_dinamicos": {
+          "conceptos_core": "SUELDO BASE, DIRECTIVA PRIMAS, PENSION",
+          "conceptos_adicionales": "Conceptos variables según la directiva"
+        },
+        "origen": "PHP - migracion/pensiones-kernel/models/kernel/KCargador.php"
+      }
+    },
+    "tipos_nomina": {
+      "RCP": {
+        "nombre": "Retirados con Pensión",
+        "descripcion": "Titulares militares que reciben pensión directa por retiro del servicio activo",
+        "es_titular": true
+      },
+      "FCP": {
+        "nombre": "Fallecidos con Pensión",
+        "descripcion": "Sobrevivientes/familiares de militares fallecidos que reciben pensión por derecho derivado",
+        "es_titular": false
+      },
+      "PG": {
+        "nombre": "Pensión de Gracia",
+        "descripcion": "Beneficio otorgado por el Ejecutivo Nacional sin cumplir todos los requisitos legales"
+      },
+      "I": {
+        "nombre": "Inválido (discapacitados)",
+        "descripcion": "Personal militar retirado por invalidez"
+      },
+      "SD": {
+        "nombre": "Sin Definir",
+        "descripcion": "Tipo de nómina no definido"
+      }
+    }
+  },
+  "csv_prestaciones": {
+    "descripcion": "Archivo de fideicomiso / prestaciones laborales",
+    "separador": ",",
+    "archivo": "aporte_{ciclo}.csv",
+    "encabezados": [
+      {"posicion": 1, "campo": "cedula", "descripcion": "Cédula de identidad", "tipo": "string"},
+      {"posicion": 2, "campo": "nombres", "descripcion": "Nombres del beneficiario", "tipo": "string"},
+      {"posicion": 3, "campo": "apellidos", "descripcion": "Apellidos del beneficiario", "tipo": "string"},
+      {"posicion": 4, "campo": "numero_cuenta", "descripcion": "Número de cuenta bancaria", "tipo": "string"},
+      {"posicion": 5, "campo": "garantia_original", "descripcion": "Monto original de garantía/vacaciones", "tipo": "decimal", "formato": "%.2f"},
+      {"posicion": 6, "campo": "factor_aplicado", "descripcion": "Factor de cálculo aplicado", "tipo": "decimal", "formato": "%.6f"},
+      {"posicion": 7, "campo": "garantia_anticipo", "descripcion": "Monto de garantía para anticipo", "tipo": "decimal", "formato": "%.2f"}
+    ],
+    "origen": "Rust - core/src/kernel/logica/exportador.rs:exportar_aporte_csv"
+  }
+}

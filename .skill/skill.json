@@ -1,0 +1,12 @@
+{
+  "name": "pensiones_calculos",
+  "description": "Fórmulas, validaciones y funciones para cálculo de nóminas de pensiones militares según Ley Negro Primero",
+  "version": "1.0",
+  "file": "pensiones_calculos.md",
+  "tags": ["pensiones", "rcp", "fcp", "calculos", "ley-negro-primero", "militar"],
+  "categories": {
+    "calculos": "Cálculos financieros de pensiones",
+    "validaciones": "Validaciones de requisitos legales",
+    "formulas": "Fórmulas de distribución y porcentajes"
+  }
+}
