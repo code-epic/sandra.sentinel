@@ -2,7 +2,9 @@ pub mod banco;
 pub mod calc;
 pub mod kernel;
 pub mod model;
+pub mod nomina;
 pub mod system;
+pub mod tipos;
 pub mod util;
 
 // Punto de entrada del sistema

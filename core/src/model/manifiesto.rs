@@ -79,9 +79,18 @@ fn default_version() -> String {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CargaConfig {
+    #[serde(default)]
+    pub api_name: Option<String>, // Nombre de la API a consultar (ej: "IPSFA_CDirectiva")
+
     pub sql_filter: Option<String>, // WHERE clause o similar para SQL
-    pub limit: Option<u32>,         // Límite de registros
+    pub limit: Option<u32>,         // Limite de registros
     pub parametros_extra: Option<String>, // JSON string extra si se requiere
+}
+
+impl CargaConfig {
+    pub fn get_api_name(&self, clave: &str) -> String {
+        self.api_name.clone().unwrap_or_else(|| clave.to_string())
+    }
 }
 
 impl Manifiesto {
@@ -94,10 +103,11 @@ impl Manifiesto {
     pub fn default_mock() -> Self {
         let mut cargas: HashMap<String, CargaConfig> = HashMap::new();
 
-        // Configuración por defecto segura (Directiva 81 / Activos 201)
+        // Configuracion por defecto segura (Directiva 81 / Activos 201)
         cargas.insert(
             "IPSFA_CPrimasFunciones".to_string(),
             CargaConfig {
+                api_name: Some("IPSFA_CPrimasFunciones".to_string()),
                 sql_filter: Some("f.oidd = 81".to_string()),
                 limit: None,
                 parametros_extra: None,
@@ -106,6 +116,7 @@ impl Manifiesto {
         cargas.insert(
             "IPSFA_CDirectiva".to_string(),
             CargaConfig {
+                api_name: Some("IPSFA_CDirectiva".to_string()),
                 sql_filter: Some("dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0".to_string()),
                 limit: None,
                 parametros_extra: None,
@@ -114,6 +125,7 @@ impl Manifiesto {
         cargas.insert(
             "IPSFA_CConceptos".to_string(),
             CargaConfig {
+                api_name: Some("IPSFA_CConceptos".to_string()),
                 sql_filter: Some("directiva_sueldo_id = 81".to_string()),
                 limit: None,
                 parametros_extra: None,
@@ -122,6 +134,7 @@ impl Manifiesto {
         cargas.insert(
             "IPSFA_CBase".to_string(),
             CargaConfig {
+                api_name: Some("IPSFA_CBase".to_string()),
                 sql_filter: Some("status_id = 201 and cedula = '17818665'".to_string()),
                 limit: None,
                 parametros_extra: None,
@@ -130,6 +143,7 @@ impl Manifiesto {
         cargas.insert(
             "IPSFA_CBeneficiarios".to_string(),
             CargaConfig {
+                api_name: Some("IPSFA_CBeneficiarios".to_string()),
                 sql_filter: Some("bnf.status_id = 201 and bnf.cedula = '17818665'".to_string()),
                 limit: None,
                 parametros_extra: None,
@@ -139,6 +153,7 @@ impl Manifiesto {
         cargas.insert(
             "IPSFA_CMovimientos".to_string(),
             CargaConfig {
+                api_name: Some("IPSFA_CMovimientos".to_string()),
                 sql_filter: Some("cedula = '17818665'".to_string()),
                 limit: None,
                 parametros_extra: None,

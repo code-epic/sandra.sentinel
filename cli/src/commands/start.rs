@@ -1,5 +1,6 @@
 use sandra_core::banco::{self, TipoArchivo};
 use sandra_core::kernel::logica::{exportador, logger, telemetria};
+use sandra_core::tipos::TipoNomina;
 use sandra_core::System;
 
 use sandra_core::model::Manifiesto;
@@ -25,12 +26,15 @@ pub async fn execute(
     log: bool,
     sensors: bool,
     manifest_path: Option<String>,
+    tipo: TipoNomina,
 ) -> Result<(), Box<dyn std::error::Error>> {
     telemetria::init(sensors);
 
     // --- BANNER DE INICIO ---
     println!("\n{:=<80}", "");
     println!("{:^80}", "SANDRA SENTINEL - EJECUCIÓN DE NÓMINA");
+    println!("{:^80}", "");
+    println!("{:^80}", format!("TIPO: {} - {}", tipo, tipo.descripcion()));
     println!("{:=<80}", "");
 
     let mut system = System::init(); // Restaurado
@@ -79,7 +83,7 @@ pub async fn execute(
 
     if execute {
         let start = std::time::Instant::now();
-        match system.kernel.ejecutar_ciclo_carga().await {
+        match system.kernel.ejecutar_ciclo_carga(tipo).await {
             Ok(_) => {
                 let duration = start.elapsed();
 
@@ -102,15 +106,17 @@ pub async fn execute(
                     // Vector para almacenar resultados y generar manifest
                     let mut resultados_export: Vec<exportador::ResultadoExport> = Vec::new();
 
-                    // EXPORTACION NÓMINA
+                    // EXPORTACION NÓMINA DINÁMICA
                     let t_export = std::time::Instant::now();
+                    let es_nfcp = matches!(tipo, sandra_core::tipos::TipoNomina::Nfcp);
 
-                    match exportador::exportar_nomina_csv(
+                    match exportador::exportar_nomina_dinamica(
                         &system.kernel.beneficiarios,
                         ciclo,
                         destino,
                         comprimir,
                         nivel,
+                        es_nfcp,
                     ) {
                         Ok(resultado) => {
                             telemetria::record(

@@ -1,6 +1,51 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use sandra_core::tipos::TipoNomina;
 
 mod commands;
+
+#[derive(Clone, Copy, Debug)]
+pub enum TipoNominaCli {
+    Npr,
+    Nact,
+    Nrcp,
+    Nfcp,
+}
+
+impl From<TipoNominaCli> for TipoNomina {
+    fn from(t: TipoNominaCli) -> Self {
+        match t {
+            TipoNominaCli::Npr => TipoNomina::Npr,
+            TipoNominaCli::Nact => TipoNomina::Nact,
+            TipoNominaCli::Nrcp => TipoNomina::Nrcp,
+            TipoNominaCli::Nfcp => TipoNomina::Nfcp,
+        }
+    }
+}
+
+impl ValueEnum for TipoNominaCli {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[TipoNominaCli::Npr, TipoNominaCli::Nact, TipoNominaCli::Nrcp, TipoNominaCli::Nfcp]
+    }
+
+    fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
+        match input.to_lowercase().as_str() {
+            "npr" => Ok(TipoNominaCli::Npr),
+            "nact" => Ok(TipoNominaCli::Nact),
+            "nrcp" => Ok(TipoNominaCli::Nrcp),
+            "nfcp" => Ok(TipoNominaCli::Nfcp),
+            _ => Err(format!("Unknown tipo: {}", input)),
+        }
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        Some(clap::builder::PossibleValue::new(match self {
+            TipoNominaCli::Npr => "npr",
+            TipoNominaCli::Nact => "nact",
+            TipoNominaCli::Nrcp => "nrcp",
+            TipoNominaCli::Nfcp => "nfcp",
+        }))
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "sandra")]
@@ -37,6 +82,10 @@ enum Commands {
         /// Ruta a un archivo de manifiesto (.json) para configurar la ejecución.
         #[arg(short = 'm', long = "manifest")]
         manifest: Option<String>,
+
+        /// Tipo de nómina a generar.
+        #[arg(short = 't', long, value_enum, default_value = "npr")]
+        tipo: TipoNominaCli,
     },
 
     /// Procesa conciliación de nómina desde un archivo local.
@@ -70,8 +119,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log,
             sensors,
             manifest,
+            tipo,
         }) => {
-            commands::start::execute(*execute, *log, *sensors, manifest.clone()).await?;
+            commands::start::execute(*execute, *log, *sensors, manifest.clone(), (*tipo).into()).await?;
         }
         Some(Commands::Conciliacion { archivo }) => {
             commands::conciliacion::execute(archivo.clone()).await;

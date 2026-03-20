@@ -477,3 +477,150 @@ pub fn generar_manifest(
 
     Ok(())
 }
+
+pub fn exportar_nomina_dinamica(
+    beneficiarios: &Vec<Beneficiario>,
+    ciclo: &str,
+    destino: &str,
+    comprimir: bool,
+    nivel_compresion: i32,
+    es_nfcp: bool,
+) -> Result<ResultadoExport, Box<dyn std::error::Error>> {
+    let nombre_archivo = format!("nomina_{}.csv", ciclo);
+    let ruta_completa = if destino == "." || destino.is_empty() {
+        PathBuf::from(&nombre_archivo)
+    } else {
+        PathBuf::from(destino).join(&nombre_archivo)
+    };
+
+    let nombre_mostrar = ruta_completa
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| nombre_archivo.clone());
+
+    println!(
+        "> Exportando nómina dinámica a CSV '{}' ({} registros)...",
+        nombre_mostrar,
+        beneficiarios.len()
+    );
+
+    let file = File::create(&ruta_completa)?;
+    let mut wtr = csv::Writer::from_writer(file);
+
+    let mut headers = vec!["cedula", "nombres", "apellidos"];
+
+    headers.push("porcentaje");
+    headers.push("sueldo_integral");
+    headers.push("sueldo_neto_porcentaje");
+    headers.push("total_asignaciones");
+    headers.push("total_deducciones");
+    headers.push("neto");
+
+    if es_nfcp {
+        headers.push("cedula_titular");
+        headers.push("parentesco");
+        headers.push("nombre_autorizado");
+    }
+
+    wtr.write_record(&headers)?;
+
+    for b in beneficiarios {
+        let neto_porcentaje = b.base.sueldo_integral * (b.porcentaje / 100.0);
+
+        let mut record = vec![
+            b.cedula.clone(),
+            b.nombres.clone(),
+            b.apellidos.clone(),
+            format!("{:.2}", b.porcentaje),
+            format!("{:.2}", b.base.sueldo_integral),
+            format!("{:.2}", neto_porcentaje),
+            format!("{:.2}", b.total_asignaciones),
+            format!("{:.2}", b.total_deducciones),
+            format!("{:.2}", b.neto),
+        ];
+
+        if es_nfcp {
+            record.push(b.cedula_titular.clone().unwrap_or_default());
+            record.push(b.parentesco.clone().unwrap_or_default());
+            record.push(b.nombre_autorizado.clone().unwrap_or_default());
+        }
+
+        wtr.write_record(&record)?;
+    }
+
+    wtr.flush()?;
+    drop(wtr);
+
+    let datos_csv = std::fs::read(&ruta_completa)?;
+    let tamano_original = datos_csv.len() as u64;
+    let hash_csv = generar_hash(&datos_csv);
+    let resultado: ResultadoExport;
+
+    if comprimir {
+        println!(
+            "    > Comprimiendo archivo con zstd (nivel {})...",
+            nivel_compresion
+        );
+        let (comprimido, hash) = comprimir_y_sellar(&datos_csv, nivel_compresion);
+
+        let ruta_zst = ruta_completa.with_extension("csv.zst");
+        let mut archivo_zst = File::create(&ruta_zst)?;
+        archivo_zst.write_all(&comprimido)?;
+
+        std::fs::remove_file(&ruta_completa)?;
+
+        let nombre_zst = ruta_zst
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| ruta_zst.display().to_string());
+
+        println!(
+            "    > Archivo comprimido: {} (Original: {} bytes, Comprimido: {} bytes)",
+            nombre_zst,
+            tamano_original,
+            comprimido.len()
+        );
+
+        logger::log_info(
+            "EXPORT",
+            &format!(
+                "Archivo CSV dinámico comprimido: {} - Hash: {}",
+                nombre_zst,
+                &hash[..16]
+            ),
+        );
+
+        resultado = ResultadoExport {
+            ruta: ruta_zst.display().to_string(),
+            tipo: "nomina".to_string(),
+            tamano_original,
+            tamano_comprimido: Some(comprimido.len() as u64),
+            hash_sha256: Some(hash),
+            hash_sha256_original: Some(hash_csv),
+            compresion_aplicada: true,
+        };
+    } else {
+        let hash = generar_hash(&datos_csv);
+
+        logger::log_info(
+            "EXPORT",
+            &format!(
+                "Archivo CSV dinámico generado: {} - Hash: {}",
+                ruta_completa.display(),
+                &hash[..16]
+            ),
+        );
+
+        resultado = ResultadoExport {
+            ruta: ruta_completa.display().to_string(),
+            tipo: "nomina".to_string(),
+            tamano_original,
+            tamano_comprimido: None,
+            hash_sha256: Some(hash),
+            hash_sha256_original: Some(hash_csv),
+            compresion_aplicada: false,
+        };
+    }
+
+    Ok(resultado)
+}

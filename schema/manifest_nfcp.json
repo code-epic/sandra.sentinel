@@ -1,0 +1,50 @@
+{
+  "nombre": "Nómina NFCP - Fallecidos con Pension",
+  "ciclo": "2026-01",
+  "descripcion": "Nómina de Fallecidos con Pension - Enero 2026",
+  "autor": "Sistema Sandra",
+  "fecha": "2026-01-15 10:00:00",
+  "version": "1.0.0",
+  "parametros_globales": {},
+  "cargas": {
+    "IPSFA_CPrimasFunciones": {
+      "api_name": "IPSFA_CPrimasFunciones",
+      "sql_filter": "f.oidd = 81"
+    },
+    "IPSFA_CDirectiva": {
+      "api_name": "IPSFA_CDirectiva",
+      "sql_filter": "dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0"
+    },
+    "IPSFA_CConceptos": {
+      "api_name": "IPSFA_CConceptos",
+      "sql_filter": "directiva_sueldo_id = 81"
+    },
+    "IPSFA_CBase": {
+      "api_name": "IPSFA_CBase",
+      "sql_filter": "status_id = 401"
+    },
+    "IPSFA_CBeneficiarios": {
+      "api_name": "IPSFA_CBeneficiarios",
+      "sql_filter": "bnf.status_id = 401"
+    },
+    "IPSFA_CMovimientos": {
+      "api_name": "IPSFA_CMovimientos",
+      "sql_filter": "status_id = 401"
+    },
+    "FAMILIARES": {
+      "api_name": "public.familiar",
+      "sql_filter": "porcentaje > 0"
+    }
+  },
+  "aportes": {
+    "habilitar": false,
+    "monto_aprobado_garantias": 0.00
+  },
+  "salida": {
+    "destino": "./output",
+    "compresion": true,
+    "nivel_compresion": 6,
+    "format_txt": "aporte",
+    "bancos": ["0102", "0177", "0175"]
+  }
+}

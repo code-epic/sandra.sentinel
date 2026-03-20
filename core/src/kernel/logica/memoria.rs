@@ -54,7 +54,7 @@ pub struct Concepto {
     #[serde(default)]
     pub formula: String,
 
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_any_to_string")]
     pub tipo: String, // Asignación / Deducción
 
     #[serde(default, alias = "monto")]
@@ -345,6 +345,20 @@ where
     }
 }
 
+// Helper para deserializar cualquier cosa a String
+fn deserialize_any_to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let v: serde_json::Value = serde::Deserialize::deserialize(deserializer)?;
+    match v {
+        serde_json::Value::String(s) => Ok(s),
+        serde_json::Value::Number(n) => Ok(n.to_string()),
+        serde_json::Value::Null => Ok(String::new()),
+        _ => Err(serde::de::Error::custom("Expected string, number or null")),
+    }
+}
+
 // Helper para deserializar cualquier cosa a u32
 fn deserialize_any_to_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
@@ -484,6 +498,33 @@ pub struct Beneficiario {
 
     #[serde(default)]
     pub deducciones: Vec<Movimiento>,
+
+    #[serde(default)]
+    pub neto: f64,
+
+    #[serde(default, alias = "porcentaje")]
+    pub porcentaje: f64,
+
+    #[serde(default)]
+    pub conceptos_calculados: Option<std::collections::HashMap<String, ConceptoCalculado>>,
+
+    #[serde(default)]
+    pub total_asignaciones: f64,
+
+    #[serde(default)]
+    pub total_deducciones: f64,
+
+    #[serde(default)]
+    pub es_familiar: bool,
+
+    #[serde(default, alias = "cedula_titular", alias = "titular")]
+    pub cedula_titular: Option<String>,
+
+    #[serde(default, alias = "parentesco")]
+    pub parentesco: Option<String>,
+
+    #[serde(default, alias = "nombre_autorizado", alias = "autorizado")]
+    pub nombre_autorizado: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -499,4 +540,114 @@ pub struct PrimaFuncion {
 
     #[serde(default)]
     pub formula: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TipoConcepto {
+    Asignacion,
+    Deduccion,
+}
+
+impl From<String> for TipoConcepto {
+    fn from(s: String) -> Self {
+        match s.to_lowercase().as_str() {
+            "asignacion" | "asignación" | "1" | "asig" => TipoConcepto::Asignacion,
+            "deduccion" | "deducción" | "2" | "ded" => TipoConcepto::Deduccion,
+            _ => TipoConcepto::Asignacion,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConceptoCalculado {
+    pub codigo: String,
+    pub descripcion: String,
+    pub tipo: TipoConcepto,
+    pub valor: f64,
+    pub estructura: String,
+    pub cuenta: String,
+    pub partida: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConceptoNomina {
+    #[serde(default, deserialize_with = "deserialize_any_to_string")]
+    pub codigo: String,
+
+    #[serde(default, deserialize_with = "deserialize_any_to_string")]
+    pub descripcion: String,
+
+    #[serde(default, alias = "forumula", alias = "formula", deserialize_with = "deserialize_any_to_string")]
+    pub codigo_rhai: String,
+
+    #[serde(default, deserialize_with = "deserialize_any_to_string")]
+    pub estructura: String,
+
+    #[serde(default, deserialize_with = "deserialize_any_to_string")]
+    pub cuenta: String,
+
+    #[serde(default, deserialize_with = "deserialize_any_to_string")]
+    pub partida: String,
+
+    #[serde(
+        default,
+        deserialize_with = "deserialize_any_to_u32",
+        alias = "tipo",
+        alias = "TIPO"
+    )]
+    pub tipo: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Familiar {
+    #[serde(alias = "titular", alias = "cedula_titular")]
+    pub titular: String,
+
+    #[serde(alias = "cedula", alias = "id")]
+    pub cedula: String,
+
+    #[serde(default, alias = "nombres", alias = "nombre")]
+    pub nombres: String,
+
+    #[serde(default, alias = "apellidos")]
+    pub apellidos: String,
+
+    #[serde(default, alias = "sexo")]
+    pub sexo: Option<String>,
+
+    #[serde(default, alias = "f_nacimiento")]
+    pub f_nacimiento: Option<String>,
+
+    #[serde(default, alias = "parentesco")]
+    pub parentesco: Option<String>,
+
+    #[serde(default, alias = "edo_civil")]
+    pub edo_civil: Option<String>,
+
+    #[serde(default, alias = "f_defuncion")]
+    pub f_defuncion: Option<String>,
+
+    #[serde(default, alias = "autorizado")]
+    pub autorizado: Option<String>,
+
+    #[serde(default, alias = "tipo")]
+    pub tipo: Option<String>,
+
+    #[serde(default, alias = "banco")]
+    pub banco: Option<String>,
+
+    #[serde(default, alias = "numero", alias = "numero_cuenta")]
+    pub numero_cuenta: Option<String>,
+
+    #[serde(default, alias = "situacion")]
+    pub situacion: Option<String>,
+
+    #[serde(default, alias = "estatus")]
+    pub estatus: Option<i32>,
+
+    #[serde(default, alias = "porcentaje", alias = "pct")]
+    pub porcentaje: f64,
+
+    #[serde(default, alias = "nombre_autorizado")]
+    pub nombre_autorizado: Option<String>,
 }

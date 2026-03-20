@@ -1,21 +1,11 @@
 {
-  "nombre": "Nómina Enero 2026 - Oficial",
+  "nombre": "Nómina NRCP - Retirados con Pensión",
   "ciclo": "2026-01",
-  "descripcion": "Ejecución final con ajustes de decreto.",
-  "autor": "Admin. Sistemas",
-  "fecha": "2026-01-31 08:00:00",
+  "descripcion": "Nómina deRetirados con Pension - Enero 2026",
+  "autor": "Sistema Sandra",
+  "fecha": "2026-01-15 10:00:00",
   "version": "1.0.0",
-  "salida": {
-    "destino": "./nm",
-    "compresion": true,
-    "nivel_compresion": 3,
-    "format_txt": "aporte",
-    "bancos": ["0102"]
-  },
-  "aportes": {
-    "habilitar": true,
-    "monto_aprobado_garantias": 40000000.00
-  },
+  "parametros_globales": {},
   "cargas": {
     "IPSFA_CPrimasFunciones": {
       "api_name": "IPSFA_CPrimasFunciones",
@@ -31,15 +21,26 @@
     },
     "IPSFA_CBase": {
       "api_name": "IPSFA_CBase",
-      "sql_filter": "status_id = 201"
+      "sql_filter": "status_id = 301"
     },
     "IPSFA_CBeneficiarios": {
       "api_name": "IPSFA_CBeneficiarios",
-      "sql_filter": "bnf.status_id = 201"
+      "sql_filter": "bnf.status_id = 301"
     },
     "IPSFA_CMovimientos": {
       "api_name": "IPSFA_CMovimientos",
-      "sql_filter": ""
+      "sql_filter": "status_id = 301"
     }
+  },
+  "aportes": {
+    "habilitar": true,
+    "monto_aprobado_garantias": 100000.00
+  },
+  "salida": {
+    "destino": "./output",
+    "compresion": true,
+    "nivel_compresion": 6,
+    "format_txt": "aporte",
+    "bancos": ["0102", "0177"]
   }
 }

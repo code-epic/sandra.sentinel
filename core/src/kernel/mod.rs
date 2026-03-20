@@ -12,8 +12,10 @@ use sandra::{DynamicRequest, DynamicResponse};
 
 pub mod logica;
 
+use crate::nomina::{calcular_totales_conceptos, EjecutorConceptos};
+use crate::tipos::TipoNomina;
 use logica::cargador;
-use logica::memoria;
+use logica::memoria::{self, Base, Beneficiario, Movimiento};
 
 // El "Perceptrón" (Cache/Memoization)
 #[derive(Debug)]
@@ -24,7 +26,7 @@ pub struct Perceptron {
     // Memoria de Trabajo
     pub directiva: Vec<memoria::Directiva>,
     pub primas_funciones: Vec<memoria::PrimaFuncion>,
-    pub conceptos: Vec<memoria::Concepto>,
+    pub conceptos_nomina: Vec<memoria::ConceptoNomina>,
     pub base: Vec<memoria::Base>,
     pub movimientos: Vec<memoria::Movimiento>,
     pub beneficiarios: Vec<memoria::Beneficiario>,
@@ -39,7 +41,7 @@ impl Default for Perceptron {
             client: None,
             directiva: Vec::new(),
             primas_funciones: Vec::new(),
-            conceptos: Vec::new(),
+            conceptos_nomina: Vec::new(),
             base: Vec::new(),
             movimientos: Vec::new(),
             beneficiarios: Vec::new(),
@@ -92,6 +94,7 @@ impl Perceptron {
     /// Orquestador Principal del Ciclo de Nómina
     pub async fn ejecutar_ciclo_carga(
         &mut self,
+        tipo_nomina: TipoNomina,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // println!(">>> INICIANDO CICLO DE CARGA DE NÓMINA <<<"); // REEMPLAZADO POR HEADER DE CLI
 
@@ -224,7 +227,7 @@ impl Perceptron {
 
         // Procesar resultados
         self.base = res_base??;
-        self.conceptos = res_conc??;
+        self.conceptos_nomina = res_conc??;
         self.movimientos = movimientos_cargados;
 
         println!(
@@ -244,11 +247,53 @@ impl Perceptron {
         println!(
             "  • {:<20} : {:>10} registros | OK",
             "Conceptos",
-            self.conceptos.len()
+            self.conceptos_nomina.len()
         );
         print_filtro(&self.config, "IPSFA_CConceptos");
 
         println!("    (Tiempo Paso 2: {:.2?})", t_p2.elapsed());
+        println!();
+
+        // ---------------------------------------------------------------------
+        // PASO 2.5: EJECUTAR CONCEPTOS DINÁMICOS
+        // ---------------------------------------------------------------------
+        println!("PASO 2.5: EJECUTAR CONCEPTOS DINÁMICOS");
+        println!("{:-<80}", "");
+
+        let t_conceptos = std::time::Instant::now();
+        
+        let conceptos_nomina = self.conceptos_nomina.clone();
+
+        let ejecutor = EjecutorConceptos::new(conceptos_nomina);
+        let conceptos_calculados_map = ejecutor.ejecutar(&self.base);
+
+        let total_conceptos_cargados = self.conceptos_nomina.len();
+        let total_beneficiarios_procesados = conceptos_calculados_map.len();
+
+        if total_conceptos_cargados == 0 {
+            println!(
+                "  • {:<20} : {:>10} registros | {}",
+                "Conceptos Definidos",
+                0,
+                "ADVERTENCIA: No se cargaron formulas de IPSFA_CConceptos"
+            );
+            logica::logger::log_warn(
+                "CONCEPTOS",
+                "IPSFA_CConceptos devolvio 0 registros - No se aplicaran conceptos dinamicos",
+            );
+        } else {
+            println!(
+                "  • {:<20} : {:>10} registros | OK",
+                "Conceptos Definidos",
+                total_conceptos_cargados
+            );
+        }
+        println!(
+            "  • {:<20} : {:>10} beneficiarios | OK",
+            "Beneficiarios Procesados",
+            total_beneficiarios_procesados
+        );
+        println!("    (Tiempo conceptos: {:.2?})", t_conceptos.elapsed());
         println!();
 
         // ---------------------------------------------------------------------
@@ -269,6 +314,67 @@ impl Perceptron {
             .cargar_beneficiarios(&self.base, &self.movimientos, monto_aprobado)
             .await?;
 
+        // ---------------------------------------------------------------------
+        // PASO 3.5: APLICAR CONCEPTOS Y CALCULAR NETO
+        // ---------------------------------------------------------------------
+        println!("PASO 3.5: APLICAR CONCEPTOS Y CALCULAR NETO");
+        println!("{:-<80}", "");
+
+        for beneficiario in &mut self.beneficiarios {
+            // Buscar conceptos calculados para este beneficiario
+            if let Some(conceptos) = conceptos_calculados_map.get(&beneficiario.base.patterns) {
+                let (total_asig, total_ded) = calcular_totales_conceptos(conceptos);
+                
+                beneficiario.conceptos_calculados = Some(
+                    conceptos.iter()
+                        .map(|c| (c.codigo.clone(), c.clone()))
+                        .collect()
+                );
+                beneficiario.total_asignaciones = total_asig;
+                beneficiario.total_deducciones = total_ded;
+
+                // Calcular neto según tipo de nómina
+                match tipo_nomina {
+                    TipoNomina::Npr => {
+                        // NPR: neto = garantías (lógica actual de prestaciones)
+                        beneficiario.neto = beneficiario.base.garantias;
+                        beneficiario.porcentaje = 100.0;
+                    }
+                    TipoNomina::Nact => {
+                        // NACT: neto = sueldo integral (100%)
+                        beneficiario.porcentaje = 100.0;
+                        let base_neto = beneficiario.base.sueldo_integral;
+                        beneficiario.neto = base_neto + total_asig - total_ded;
+                    }
+                    TipoNomina::Nrcp => {
+                        // NRCP: neto = (integral × porcentaje/100) + asig - deduc
+                        let pct = beneficiario.porcentaje / 100.0;
+                        let base_neto = beneficiario.base.sueldo_integral * pct;
+                        beneficiario.neto = base_neto + total_asig - total_ded;
+                    }
+                    TipoNomina::Nfcp => {
+                        // NFCP: se calcula después con lógica especial de familiares
+                        beneficiario.neto = 0.0;
+                    }
+                }
+            } else {
+                // Si no hay conceptos, inicializar en 0
+                beneficiario.conceptos_calculados = None;
+                beneficiario.total_asignaciones = 0.0;
+                beneficiario.total_deducciones = 0.0;
+                beneficiario.neto = match tipo_nomina {
+                    TipoNomina::Npr => beneficiario.base.garantias,
+                    TipoNomina::Nact => beneficiario.base.sueldo_integral,
+                    TipoNomina::Nrcp => {
+                        let pct = beneficiario.porcentaje / 100.0;
+                        beneficiario.base.sueldo_integral * pct
+                    }
+                    TipoNomina::Nfcp => 0.0,
+                };
+                beneficiario.porcentaje = 100.0;
+            }
+        }
+
         println!(
             "  • {:<20} : {:>10} registros | OK",
             "Beneficiarios",
@@ -277,7 +383,6 @@ impl Perceptron {
         print_filtro(&self.config, "IPSFA_CBeneficiarios");
 
         println!("    (Tiempo Paso 3: {:.2?})", t_p3.elapsed());
-        // println!(">>> CICLO COMPLETADO EXITOSAMENTE <<<"); // Ya no es necesario
         Ok(())
     }
 
@@ -295,6 +400,82 @@ impl Perceptron {
                 }
             })
             .collect()
+    }
+
+    pub async fn calcular_nfcp(
+        &mut self,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        println!("PASO NFCP: CARGANDO FAMILIARES SOBREVIVIENTES");
+        println!("{:-<80}", "");
+
+        let mut c_fam = cargador::Cargador::new(self.config.clone());
+        c_fam.client = self.client.clone();
+
+        let familiares = c_fam.cargar_familiares().await?;
+        
+        println!(
+            "  • {:<20} : {:>10} registros | OK",
+            "Familiares",
+            familiares.len()
+        );
+
+        let mut familiares_beneficiarios = Vec::new();
+
+        for familiar in familiares {
+            let porcentaje = familiar.porcentaje / 100.0;
+            let monto_familiar = 0.0 * porcentaje;
+
+            let bnf = Beneficiario {
+                cedula: familiar.cedula.clone(),
+                nombres: familiar.nombres.clone(),
+                apellidos: familiar.apellidos.clone(),
+                porcentaje: familiar.porcentaje,
+                neto: monto_familiar,
+                total_asignaciones: 0.0,
+                total_deducciones: 0.0,
+                conceptos_calculados: None,
+                es_familiar: true,
+                cedula_titular: Some(familiar.titular.clone()),
+                parentesco: familiar.parentesco.clone(),
+                nombre_autorizado: familiar.nombre_autorizado.clone(),
+                base: Base::default(),
+                movimientos: Movimiento::default(),
+                asignaciones: Vec::new(),
+                deducciones: Vec::new(),
+                patterns: String::new(),
+                componente_id: 0,
+                f_ingreso_sistema: None,
+                f_ult_ascenso: None,
+                f_retiro: None,
+                f_retiro_efectiva: None,
+                edo_civil: None,
+                sexo: familiar.sexo.clone(),
+                status_id: 0,
+                st_no_ascenso: 0,
+                categoria: None,
+                status: 0,
+                numero_cuenta: familiar.numero_cuenta.clone().unwrap_or_default(),
+                f_creacion: None,
+                usr_creacion: None,
+                f_ult_modificacion: None,
+                usr_modificacion: None,
+                observ_ult_modificacion: None,
+                motivo_paralizacion: None,
+                f_reincorporacion: None,
+            };
+
+            familiares_beneficiarios.push(bnf);
+        }
+
+        self.beneficiarios = familiares_beneficiarios;
+        
+        println!(
+            "  • {:<20} : {:>10} beneficiarios NFCP",
+            "Total NFCP",
+            self.beneficiarios.len()
+        );
+
+        Ok(())
     }
 }
 

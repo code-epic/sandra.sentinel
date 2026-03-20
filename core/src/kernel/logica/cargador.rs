@@ -46,8 +46,7 @@ impl Cargador {
 
     pub async fn cargar_conceptos(
         &mut self,
-    ) -> Result<Vec<Concepto>, Box<dyn std::error::Error + Send + Sync>> {
-        // self.fetch_stream("IPSFA_CConceptos").await
+    ) -> Result<Vec<ConceptoNomina>, Box<dyn std::error::Error + Send + Sync>> {
         self.fetch_stream("IPSFA_CConceptos").await
     }
 
@@ -353,24 +352,27 @@ impl Cargador {
 
     async fn fetch_stream<T: serde::de::DeserializeOwned>(
         &mut self,
-        funcion: &str,
+        clave: &str,
     ) -> Result<Vec<T>, Box<dyn std::error::Error + Send + Sync>> {
-        // println!("    > Iniciando stream: '{}'", funcion);
+        // println!("    > Iniciando stream: '{}'", clave);
 
         if let Some(client) = &mut self.client {
-            // Lógica Manifiesto: Buscar parámetros dinámicos
+            // Logica Manifiesto: Obtener api_name y parametros
             let mut sql_param = "\"%\"".to_string();
-            if let Some(cfg) = self.config.cargas.get(funcion) {
+            let api_name = if let Some(cfg) = self.config.cargas.get(clave) {
                 if let Some(filter) = &cfg.sql_filter {
-                    let msg = format!("Aplicando filtro a {}: {}", funcion, filter);
+                    let msg = format!("Aplicando filtro a {}: {}", clave, filter);
                     // println!("      - Filtro: {}", filter);
                     logger::log_info("MANIFEST", &msg);
                     sql_param = filter.clone();
                 }
-            }
+                cfg.get_api_name(clave)
+            } else {
+                clave.to_string()
+            };
 
             let request = tonic::Request::new(DynamicRequest {
-                funcion: funcion.to_string(),
+                funcion: api_name.clone(),
                 parametros: sql_param,
                 valores: "null".to_string(),
             });
@@ -380,8 +382,8 @@ impl Cargador {
             let mut stream = client.execute_dynamic(request).await?.into_inner();
             // let elapsed = start_time.elapsed();
             // println!(
-            //     "    [CONNECTION] [{}] Conexión establecida en {:?}",
-            //     funcion, elapsed
+            //     "    [CONNECTION] [{}] Conexion establecida en {:?}",
+            //     clave, elapsed
             // );
 
             let mut results = Vec::new();
@@ -404,13 +406,13 @@ impl Cargador {
                         if !json_error_logged {
                             logger::log_error(
                                 "JSON",
-                                &format!("Error deserializando batch en '{}': {}", funcion, e),
+                                &format!("Error deserializando batch en '{}': {}", clave, e),
                             );
                             json_error_logged = true;
                         }
                         eprintln!(
                             "[WARN] Error deserializando batch JSON en '{}': {}",
-                            funcion, e
+                            clave, e
                         );
                     }
                 }
@@ -419,14 +421,14 @@ impl Cargador {
             if results.is_empty() {
                 logger::log_warn(
                     "DATA",
-                    &format!("Servicio '{}' devolvió 0 registros", funcion),
+                    &format!("Servicio '{}' devolvio 0 registros", api_name),
                 );
             }
 
             let total_elapsed = start_time.elapsed();
             let msg_done = format!(
                 "'{}' completado en {:?}. Total: {} registros en {} lotes.",
-                funcion,
+                api_name,
                 total_elapsed,
                 results.len(),
                 chunks
@@ -437,7 +439,7 @@ impl Cargador {
             // Telemetría
             crate::kernel::logica::telemetria::record(
                 "CARGA",
-                funcion,
+                &api_name,
                 total_elapsed,
                 results.len(),
                 &format!("Lotes: {}", chunks),
@@ -447,9 +449,15 @@ impl Cargador {
         } else {
             println!(
                 "[ERROR] Intento de carga '{}' fallido: Cliente no conectado",
-                funcion
+                clave
             );
             Err("Cliente no conectado".into())
         }
+    }
+
+    pub async fn cargar_familiares(
+        &mut self,
+    ) -> Result<Vec<Familiar>, Box<dyn std::error::Error + Send + Sync>> {
+        self.fetch_stream("public.familiar").await
     }
 }
