@@ -1609,18 +1609,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sandra_cli"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "sandra_core",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "sandra_core"
 version = "0.1.0"
 dependencies = [
@@ -1643,6 +1631,18 @@ dependencies = [
  "walkdir",
  "zip",
  "zstd",
+]
+
+[[package]]
+name = "sandra_sentinel"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "sandra_core",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

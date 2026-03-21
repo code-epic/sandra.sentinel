@@ -1,7 +1,11 @@
 [package]
-name = "sandra_cli"
+name = "sandra_sentinel"
 version = "0.1.0"
 edition = "2021"
+
+[[bin]]
+name = "sandra-sentinel"
+path = "src/main.rs"
 
 [dependencies]
 sandra_core = { path = "../core" }
@@ -10,5 +14,3 @@ tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4"
-
-
