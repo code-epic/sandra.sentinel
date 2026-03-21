@@ -369,4 +369,42 @@ cargo run -- -x -m nomina_2026.json
 
 ---
 
+## Instalación
+
+### Homebrew (macOS/Linux)
+
+```bash
+brew tap code-epic/sandra https://github.com/code-epic/homebrew-sandra
+brew install code-epic/sandra/sandra-sentinel
+```
+
+### Binarios Pre-compilados
+
+| Plataforma | Descargar |
+|------------|-----------|
+| macOS ARM64 | [sandra-sentinel-aarch64-apple-darwin](https://github.com/code-epic/sandra.sentinel/releases/latest) |
+| macOS Intel | [sandra-sentinel-x86_64-apple-darwin](https://github.com/code-epic/sandra.sentinel/releases/latest) |
+| Linux (RHEL/CentOS) | [sandra-sentinel-x86_64-unknown-linux-gnu](https://github.com/code-epic/sandra.sentinel/releases/latest) |
+
+```bash
+# Linux/macOS
+curl -L https://github.com/code-epic/sandra.sentinel/releases/latest/download/sandra-sentinel-x86_64-unknown-linux-gnu -o sandra-sentinel
+chmod +x sandra-sentinel
+```
+
+### Compilar desde Código
+
+```bash
+cargo build --release --package sandra_sentinel
+./target/release/sandra-sentinel --version
+```
+
+---
+
+## Release Guide
+
+Ver [RELEASE.md](docs/RELEASE.md) para instrucciones de cómo crear releases y gestionar el workflow de GitHub Actions.
+
+---
+
 > **Sandra Sentinel** es un ejemplo de ingeniería de sistemas moderna: tipado fuerte, concurrencia segura y optimización a bajo nivel para resolver problemas de gestión de datos a gran escala.
