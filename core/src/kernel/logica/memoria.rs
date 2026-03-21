@@ -502,7 +502,11 @@ pub struct Beneficiario {
     #[serde(default)]
     pub neto: f64,
 
-    #[serde(default, alias = "porcentaje")]
+    #[serde(
+        default,
+        alias = "porcentaje",
+        deserialize_with = "deserialize_string_to_f64"
+    )]
     pub porcentaje: f64,
 
     #[serde(default)]
@@ -552,7 +556,7 @@ impl From<String> for TipoConcepto {
     fn from(s: String) -> Self {
         match s.to_lowercase().as_str() {
             "asignacion" | "asignación" | "1" | "asig" => TipoConcepto::Asignacion,
-            "deduccion" | "deducción" | "2" | "ded" => TipoConcepto::Deduccion,
+            "deduccion" | "deducción" | "2" | "3" | "ded" => TipoConcepto::Deduccion,
             _ => TipoConcepto::Asignacion,
         }
     }
@@ -577,7 +581,12 @@ pub struct ConceptoNomina {
     #[serde(default, deserialize_with = "deserialize_any_to_string")]
     pub descripcion: String,
 
-    #[serde(default, alias = "forumula", alias = "formula", deserialize_with = "deserialize_any_to_string")]
+    #[serde(
+        default,
+        alias = "forumula",
+        alias = "formula",
+        deserialize_with = "deserialize_any_to_string"
+    )]
     pub codigo_rhai: String,
 
     #[serde(default, deserialize_with = "deserialize_any_to_string")]

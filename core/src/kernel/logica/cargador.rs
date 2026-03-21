@@ -6,6 +6,10 @@ use tonic::transport::Channel;
 
 use crate::model::Manifiesto;
 
+fn is_debug() -> bool {
+    std::env::var("SANDRA_DEBUG").is_ok()
+}
+
 #[derive(Debug)]
 pub struct Cargador {
     pub client: Option<SentinelDynamicServiceClient<Channel>>,
@@ -69,17 +73,20 @@ impl Cargador {
         if let Some(client) = &mut self.client {
             // Lógica Manifiesto: Buscar parámetros dinámicos
             let mut sql_param = "\"%\"".to_string();
-            if let Some(cfg) = self.config.cargas.get(funcion) {
+            let api_name = if let Some(cfg) = self.config.cargas.get(funcion) {
                 if let Some(filter) = &cfg.sql_filter {
                     let msg = format!("Aplicando filtro a {}: {}", funcion, filter);
                     // println!("      - Filtro: {}", filter);
                     logger::log_info("MANIFEST", &msg);
                     sql_param = filter.clone();
                 }
-            }
+                cfg.get_api_name(funcion)
+            } else {
+                funcion.to_string()
+            };
 
             let request = tonic::Request::new(DynamicRequest {
-                funcion: funcion.to_string(),
+                funcion: api_name.clone(),
                 parametros: sql_param,
                 valores: "null".to_string(),
             });
@@ -89,6 +96,7 @@ impl Cargador {
 
             let mut results = Vec::with_capacity(50000); // Pre-allocate memory estimate
             let mut chunks = 0;
+            let mut first_item_debugged = false;
 
             while let Some(msg) = stream.message().await? {
                 if msg.rows.is_empty() {
@@ -100,7 +108,26 @@ impl Cargador {
                     Ok(items) => {
                         for mut item in items {
                             // 1. CÁLCULO PREVIO: TIEMPO + SUELDO BASE (Requisito para el motor)
+                            
+                            // DEBUG: Mostrar primer registro antes del procesamiento
+                            if !first_item_debugged && is_debug() {
+                                eprintln!("[DEBUG] Primer registro ANTES de procesar:");
+                                eprintln!("[DEBUG]   grado_id={}, componente_id={}, fecha_ingreso={:?}", 
+                                    item.grado_id, item.componente_id, item.fecha_ingreso);
+                                eprintln!("[DEBUG]   sueldo_base={}", item.sueldo_base);
+                            }
+                            
                             crate::calc::procesar_registro_base(&mut item, directivas);
+                            
+                            // DEBUG: Mostrar primer registro DESPUES del procesamiento
+                            if !first_item_debugged && is_debug() {
+                                eprintln!("[DEBUG] Primer registro DESPUES de procesar:");
+                                eprintln!("[DEBUG]   grado_id={}", item.grado_id);
+                                eprintln!("[DEBUG]   antiguedad={}, antiguedad_grado={}", item.antiguedad, item.antiguedad_grado);
+                                eprintln!("[DEBUG]   sueldo_base={}", item.sueldo_base);
+                                first_item_debugged = true;
+                            }
+                            
                             results.push(item);
                         }
                     }
@@ -162,7 +189,7 @@ impl Cargador {
                 "CARGA",
                 &format!(
                     "'{}' completado. Base: {:?} registros. Motor: {} procesados. Tiempo: {:?}",
-                    funcion,
+                    api_name,
                     results.len(),
                     match_count,
                     start_time.elapsed()
@@ -176,7 +203,7 @@ impl Cargador {
             // Telemetría
             crate::kernel::logica::telemetria::record(
                 "CARGA",
-                funcion,
+                &api_name,
                 start_time.elapsed(),
                 results.len(),
                 &format!("Lotes: {}", chunks),
@@ -219,7 +246,7 @@ impl Cargador {
         if let Some(client) = &mut self.client {
             // Lógica Manifiesto: Buscar parámetros dinámicos
             let mut sql_param = "\"%\"".to_string();
-            if let Some(cfg) = self.config.cargas.get(funcion) {
+            let api_name = if let Some(cfg) = self.config.cargas.get(funcion) {
                 // funcion es &str "IPSFA_CBeneficiarios"
                 if let Some(filter) = &cfg.sql_filter {
                     let msg = format!("Aplicando filtro a {}: {}", funcion, filter);
@@ -227,10 +254,13 @@ impl Cargador {
                     logger::log_info("MANIFEST", &msg);
                     sql_param = filter.clone();
                 }
-            }
+                cfg.get_api_name(funcion)
+            } else {
+                funcion.to_string()
+            };
 
             let request = tonic::Request::new(DynamicRequest {
-                funcion: funcion.to_string(),
+                funcion: api_name.clone(),
                 parametros: sql_param,
                 valores: "null".to_string(),
             });
@@ -319,7 +349,7 @@ impl Cargador {
 
             let msg_done = format!(
                 "'{}' completado en {:?}. Total: {} registros en {} lotes.",
-                funcion,
+                api_name,
                 start_time.elapsed(),
                 results.len(),
                 chunks
@@ -330,7 +360,7 @@ impl Cargador {
             // Telemetría
             crate::kernel::logica::telemetria::record(
                 "CARGA",
-                funcion,
+                &api_name,
                 start_time.elapsed(),
                 results.len(),
                 &format!("Lotes: {}", chunks),

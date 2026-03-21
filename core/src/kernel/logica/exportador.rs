@@ -624,3 +624,463 @@ pub fn exportar_nomina_dinamica(
 
     Ok(resultado)
 }
+
+pub fn exportar_nomina_por_tipo(
+    beneficiarios: &Vec<Beneficiario>,
+    ciclo: &str,
+    tipo: &str,
+    destino: &str,
+    comprimir: bool,
+    nivel_compresion: i32,
+    es_nfcp: bool,
+) -> Result<Vec<ResultadoExport>, Box<dyn std::error::Error>> {
+    let es_npr = tipo == "npr";
+    let mut resultados = Vec::new();
+
+    let (principales, paralizados): (Vec<&Beneficiario>, Vec<&Beneficiario>) =
+        beneficiarios.iter().partition(|b| b.porcentaje > 0.0);
+
+    if !principales.is_empty() {
+        let resultado = generar_csv_nomina(
+            principales,
+            ciclo,
+            tipo,
+            destino,
+            comprimir,
+            nivel_compresion,
+            es_nfcp,
+            es_npr,
+            false,
+        )?;
+        resultados.push(resultado);
+    }
+
+    if !paralizados.is_empty() {
+        let resultado = generar_csv_nomina(
+            paralizados,
+            ciclo,
+            tipo,
+            destino,
+            comprimir,
+            nivel_compresion,
+            es_nfcp,
+            es_npr,
+            true,
+        )?;
+        resultados.push(resultado);
+    }
+
+    Ok(resultados)
+}
+
+fn generar_csv_nomina(
+    beneficiarios: Vec<&Beneficiario>,
+    ciclo: &str,
+    tipo: &str,
+    destino: &str,
+    comprimir: bool,
+    nivel_compresion: i32,
+    es_nfcp: bool,
+    es_npr: bool,
+    es_paralizado: bool,
+) -> Result<ResultadoExport, Box<dyn std::error::Error>> {
+    let sufijo = if es_paralizado { "_paralizado" } else { "" };
+    let nombre_archivo = format!("nomina_{}{}_{}.csv", tipo, sufijo, ciclo);
+
+    let ruta_completa = if destino == "." || destino.is_empty() {
+        PathBuf::from(&nombre_archivo)
+    } else {
+        PathBuf::from(destino).join(&nombre_archivo)
+    };
+
+    let nombre_mostrar = ruta_completa
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| nombre_archivo.clone());
+
+    println!(
+        "> Exportando {} a CSV '{}' ({} registros)...",
+        if es_paralizado {
+            "paralizados"
+        } else {
+            "nomina"
+        },
+        nombre_mostrar,
+        beneficiarios.len()
+    );
+
+    let file = File::create(&ruta_completa)?;
+    let mut wtr = csv::Writer::from_writer(file);
+
+    // Para archivos de paralizados, no se incluyen conceptos en headers ni registros
+    let incluir_conceptos = !es_npr && !es_paralizado;
+    let headers = generar_headers_nomina(es_npr, es_nfcp, incluir_conceptos, &beneficiarios);
+    wtr.write_record(&headers)?;
+
+    for b in &beneficiarios {
+        let record = generar_registro_nomina(b, &headers, es_npr, es_nfcp, incluir_conceptos);
+        wtr.write_record(&record)?;
+    }
+
+    wtr.flush()?;
+    drop(wtr);
+
+    comprimir_y_guardar(&ruta_completa, comprimir, nivel_compresion)
+}
+
+fn generar_headers_nomina(
+    es_npr: bool,
+    es_nfcp: bool,
+    incluir_conceptos: bool,
+    beneficiarios: &[&Beneficiario],
+) -> Vec<String> {
+    let mut headers = Vec::new();
+
+    headers.push("cedula".to_string());
+    headers.push("nombres".to_string());
+    headers.push("apellidos".to_string());
+    headers.push("sexo".to_string());
+    headers.push("edo_civil".to_string());
+    headers.push("n_hijos".to_string());
+    headers.push("componente_id".to_string());
+    headers.push("grado_id".to_string());
+    headers.push("categoria".to_string());
+    headers.push("status_id".to_string());
+    headers.push("status".to_string());
+    headers.push("st_no_ascenso".to_string());
+    headers.push("fecha_ingreso".to_string());
+    headers.push("fecha_ultimo_ascenso".to_string());
+    headers.push("fecha_retiro".to_string());
+    headers.push("anio_reconocido".to_string());
+    headers.push("mes_reconocido".to_string());
+    headers.push("dia_reconocido".to_string());
+    headers.push("antiguedad_total".to_string());
+    headers.push("antiguedad_grado".to_string());
+    headers.push("sueldo_base".to_string());
+    headers.push("prima_antiguedad".to_string());
+    headers.push("prima_hijos".to_string());
+    headers.push("prima_profesionalizacion".to_string());
+    headers.push("total_asignaciones_base".to_string());
+    headers.push("sueldo_mensual".to_string());
+
+    if es_npr {
+        headers.push("aguinaldos".to_string());
+        headers.push("vacaciones".to_string());
+        headers.push("dia_vacaciones".to_string());
+        headers.push("sueldo_integral".to_string());
+        headers.push("asignacion_antiguedad".to_string());
+        headers.push("garantias".to_string());
+        headers.push("dias_adicionales".to_string());
+        headers.push("deposito_banco".to_string());
+        headers.push("no_depositado_banco".to_string());
+        headers.push("cap_banco".to_string());
+        headers.push("anticipo".to_string());
+        headers.push("f_cap_banco".to_string());
+        headers.push("dif_asi_anti".to_string());
+        headers.push("anticipo_retroactivo".to_string());
+        headers.push("dep_adicional".to_string());
+        headers.push("dep_garantia".to_string());
+    }
+
+    headers.push("patterns".to_string());
+    headers.push("porcentaje".to_string());
+    headers.push("sueldo_neto_porcentaje".to_string());
+
+    if incluir_conceptos {
+        let mut descripciones_conceptos: Vec<String> = Vec::new();
+        for b in beneficiarios {
+            if let Some(conceptos) = &b.conceptos_calculados {
+                for (_, concepto) in conceptos.iter() {
+                    if !descripciones_conceptos.contains(&concepto.descripcion) {
+                        descripciones_conceptos.push(concepto.descripcion.clone());
+                    }
+                }
+            }
+        }
+        descripciones_conceptos.sort();
+        headers.extend(descripciones_conceptos);
+
+        headers.push("total_asignaciones".to_string());
+        headers.push("total_deducciones".to_string());
+    }
+
+    headers.push("sueldo_total".to_string());
+
+    if es_nfcp {
+        headers.push("cedula_titular".to_string());
+        headers.push("parentesco".to_string());
+        headers.push("nombre_autorizado".to_string());
+    }
+
+    headers
+}
+
+fn generar_registro_nomina(
+    b: &Beneficiario,
+    headers: &[String],
+    es_npr: bool,
+    es_nfcp: bool,
+    incluir_conceptos: bool,
+) -> Vec<String> {
+    let mut record = Vec::new();
+
+    let get_calc = |key: &str| -> String {
+        if let Some(map) = &b.base.calculos {
+            if let Some(val) = map.get(key) {
+                return format!("{:.2}", val);
+            }
+        }
+        "0.00".to_string()
+    };
+
+    record.push(b.cedula.clone());
+    record.push(b.nombres.clone());
+    record.push(b.apellidos.clone());
+    record.push(b.sexo.as_deref().unwrap_or("").to_string());
+    record.push(b.edo_civil.as_deref().unwrap_or("").to_string());
+    record.push(b.base.n_hijos.to_string());
+    record.push(b.componente_id.to_string());
+    record.push(b.base.grado_id.to_string());
+    record.push(b.categoria.as_deref().unwrap_or("").to_string());
+    record.push(b.status_id.to_string());
+    record.push(b.status.to_string());
+    record.push(b.st_no_ascenso.to_string());
+    record.push(
+        b.base
+            .fecha_ingreso
+            .as_deref()
+            .unwrap_or(b.f_ingreso_sistema.as_deref().unwrap_or(""))
+            .to_string(),
+    );
+    record.push(
+        b.base
+            .f_ult_ascenso
+            .as_deref()
+            .unwrap_or(b.f_ult_ascenso.as_deref().unwrap_or(""))
+            .to_string(),
+    );
+    record.push(
+        b.base
+            .f_retiro
+            .as_deref()
+            .unwrap_or(b.f_retiro.as_deref().unwrap_or(""))
+            .to_string(),
+    );
+    record.push(b.base.anio_reconocido.to_string());
+    record.push(b.base.mes_reconocido.to_string());
+    record.push(b.base.dia_reconocido.to_string());
+    record.push(format!("{:.4}", b.base.antiguedad));
+    record.push(b.base.antiguedad_grado.to_string());
+    record.push(format!("{:.2}", b.base.sueldo_base));
+    record.push(get_calc("prima_tiemposervicio"));
+    record.push(get_calc("prima_hijos"));
+    record.push(get_calc("prima_profesionalizacion"));
+    record.push(format!("{:.2}", b.base.total_asignaciones));
+    record.push(format!("{:.2}", b.base.sueldo_mensual));
+
+    if es_npr {
+        record.push(format!("{:.2}", b.base.aguinaldos));
+        record.push(format!("{:.2}", b.base.vacaciones));
+        record.push(b.base.dia_vacaciones.to_string());
+        record.push(format!("{:.2}", b.base.sueldo_integral));
+        record.push(format!("{:.2}", b.base.asignacion_antiguedad));
+        record.push(format!("{:.2}", b.base.garantias));
+        record.push(format!("{:.2}", b.base.dias_adicionales));
+        record.push(format!("{:.2}", b.base.deposito_banco));
+        record.push(format!("{:.2}", b.base.no_depositado_banco));
+        record.push(format!("{:.2}", b.movimientos.cap_banco));
+        record.push(format!("{:.2}", b.movimientos.anticipo));
+        record.push(format!("{:.2}", b.movimientos.fcap_banco));
+        record.push(format!("{:.2}", b.movimientos.dif_asi_anti));
+        record.push(format!("{:.2}", b.movimientos.anticipor));
+        record.push(format!("{:.2}", b.movimientos.dep_adicional));
+        record.push(format!("{:.2}", b.movimientos.dep_garantia));
+    }
+
+    record.push(b.patterns.clone());
+    record.push(format!("{:.2}", b.porcentaje));
+
+    let sueldo_neto_pct = b.base.sueldo_mensual * (b.porcentaje / 100.0);
+    record.push(format!("{:.2}", sueldo_neto_pct));
+
+    // Para NACT/NRCP/NFCP (no NPR, no paralizados): agregar columnas de conceptos
+    if incluir_conceptos {
+        // Los headers de conceptos estan despues de los campos fijos (26 campos base)
+        let num_campos_fijos = 26;
+
+        if headers.len() > num_campos_fijos {
+            let conceptos_headers = &headers[num_campos_fijos..];
+
+            for header in conceptos_headers {
+                if es_campo_fijo(header) {
+                    continue;
+                }
+
+                // Buscar este concepto en los calculos del beneficiario
+                let valor = if let Some(conceptos) = &b.conceptos_calculados {
+                    conceptos
+                        .values()
+                        .find(|c| &c.descripcion == header)
+                        .map(|c| format!("{:.2}", c.valor))
+                        .unwrap_or_else(|| "0.00".to_string())
+                } else {
+                    "0.00".to_string()
+                };
+                record.push(valor);
+            }
+        }
+
+        record.push(format!("{:.2}", b.total_asignaciones.abs()));
+        record.push(format!("{:.2}", b.total_deducciones.abs()));
+    }
+
+    let sueldo_total = if es_npr {
+        b.base.sueldo_integral
+    } else if !incluir_conceptos {
+        0.0
+    } else {
+        sueldo_neto_pct + b.total_asignaciones - b.total_deducciones
+    };
+    record.push(format!("{:.2}", sueldo_total));
+
+    if es_nfcp {
+        record.push(b.cedula_titular.clone().unwrap_or_default());
+        record.push(b.parentesco.clone().unwrap_or_default());
+        record.push(b.nombre_autorizado.clone().unwrap_or_default());
+    }
+
+    record
+}
+
+fn es_campo_fijo(campo: &str) -> bool {
+    matches!(
+        campo,
+        "cedula"
+            | "nombres"
+            | "apellidos"
+            | "sexo"
+            | "edo_civil"
+            | "n_hijos"
+            | "componente_id"
+            | "grado_id"
+            | "categoria"
+            | "status_id"
+            | "status"
+            | "st_no_ascenso"
+            | "fecha_ingreso"
+            | "fecha_ultimo_ascenso"
+            | "fecha_retiro"
+            | "anio_reconocido"
+            | "mes_reconocido"
+            | "dia_reconocido"
+            | "antiguedad_total"
+            | "antiguedad_grado"
+            | "sueldo_base"
+            | "prima_antiguedad"
+            | "prima_hijos"
+            | "prima_profesionalizacion"
+            | "total_asignaciones_base"
+            | "sueldo_mensual"
+            | "aguinaldos"
+            | "vacaciones"
+            | "dia_vacaciones"
+            | "sueldo_integral"
+            | "asignacion_antiguedad"
+            | "garantias"
+            | "dias_adicionales"
+            | "deposito_banco"
+            | "no_depositado_banco"
+            | "cap_banco"
+            | "anticipo"
+            | "f_cap_banco"
+            | "dif_asi_anti"
+            | "anticipo_retroactivo"
+            | "dep_adicional"
+            | "dep_garantia"
+            | "patterns"
+            | "porcentaje"
+            | "sueldo_neto_porcentaje"
+            | "total_asignaciones"
+            | "total_deducciones"
+            | "sueldo_total"
+            | "cedula_titular"
+            | "parentesco"
+            | "nombre_autorizado"
+    )
+}
+
+fn comprimir_y_guardar(
+    ruta_completa: &PathBuf,
+    comprimir: bool,
+    nivel_compresion: i32,
+) -> Result<ResultadoExport, Box<dyn std::error::Error>> {
+    let datos_csv = std::fs::read(ruta_completa)?;
+    let tamano_original = datos_csv.len() as u64;
+    let hash_csv = generar_hash(&datos_csv);
+
+    if comprimir {
+        println!(
+            "    > Comprimiendo archivo con zstd (nivel {})...",
+            nivel_compresion
+        );
+        let (comprimido, hash) = comprimir_y_sellar(&datos_csv, nivel_compresion);
+
+        let ruta_zst = ruta_completa.with_extension("csv.zst");
+        let mut archivo_zst = File::create(&ruta_zst)?;
+        archivo_zst.write_all(&comprimido)?;
+
+        std::fs::remove_file(ruta_completa)?;
+
+        let nombre_zst = ruta_zst
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| ruta_zst.display().to_string());
+
+        println!(
+            "    > Archivo comprimido: {} (Original: {} bytes, Comprimido: {} bytes)",
+            nombre_zst,
+            tamano_original,
+            comprimido.len()
+        );
+
+        logger::log_info(
+            "EXPORT",
+            &format!(
+                "Archivo CSV comprimido: {} - Hash: {}",
+                nombre_zst,
+                &hash[..16]
+            ),
+        );
+
+        Ok(ResultadoExport {
+            ruta: ruta_zst.display().to_string(),
+            tipo: "nomina".to_string(),
+            tamano_original,
+            tamano_comprimido: Some(comprimido.len() as u64),
+            hash_sha256: Some(hash),
+            hash_sha256_original: Some(hash_csv),
+            compresion_aplicada: true,
+        })
+    } else {
+        let hash = generar_hash(&datos_csv);
+
+        logger::log_info(
+            "EXPORT",
+            &format!(
+                "Archivo CSV generado: {} - Hash: {}",
+                ruta_completa.display(),
+                &hash[..16]
+            ),
+        );
+
+        Ok(ResultadoExport {
+            ruta: ruta_completa.display().to_string(),
+            tipo: "nomina".to_string(),
+            tamano_original,
+            tamano_comprimido: None,
+            hash_sha256: Some(hash),
+            hash_sha256_original: Some(hash_csv),
+            compresion_aplicada: false,
+        })
+    }
+}

@@ -12,6 +12,10 @@ pub struct TiempoServicio {
     pub antiguedad_grados: u32,
 }
 
+fn is_debug() -> bool {
+    std::env::var("SANDRA_DEBUG").is_ok()
+}
+
 /// Procesa un registro de Base individualmente:
 /// 1. Calcula tiempo de servicio (y actualiza antigüedad).
 /// 2. Busca y asigna el sueldo base correcto según Directiva.
@@ -21,9 +25,46 @@ pub fn procesar_registro_base(base: &mut Base, directivas: &Vec<Directiva>) {
     base.antiguedad = tiempo.antiguedad;
     base.antiguedad_grado = tiempo.antiguedad_grados;
 
+    if is_debug() {
+        eprintln!(
+            "[DEBUG] procesar_registro_base: grado_id={}, anos_servicio={}",
+            base.grado_id, tiempo.anos
+        );
+    }
+
     // 2. Determinar y asignar Sueldo Base
     if let Some(sueldo) = obtener_sueldo_base(base.grado_id, tiempo.anos, directivas) {
+        if is_debug() {
+            eprintln!("[DEBUG]   -> Sueldo base asignado: {}", sueldo);
+        }
         base.sueldo_base = sueldo;
+    } else {
+        if is_debug() {
+            eprintln!(
+                "[DEBUG]   -> NO SE ENCONTRO SUELDO para grado_id={}, anos={}",
+                base.grado_id, tiempo.anos
+            );
+            eprintln!(
+                "[DEBUG]   -> Directivas disponibles para grado_id={}: {} registros",
+                base.grado_id,
+                directivas
+                    .iter()
+                    .filter(|d| d.grado_id == base.grado_id)
+                    .count()
+            );
+
+            // Mostrar las directivas disponibles para este grado
+            for d in directivas
+                .iter()
+                .filter(|d| d.grado_id == base.grado_id)
+                .take(3)
+            {
+                eprintln!(
+                    "[DEBUG]      Directiva: grado={}, antiguedad={}, sueldo={}",
+                    d.grado_id, d.antiguedad, d.sueldo_base
+                );
+            }
+        }
     }
 }
 
@@ -92,11 +133,43 @@ pub fn obtener_sueldo_base(
     anos_servicio: u32,
     directivas: &Vec<Directiva>,
 ) -> Option<f64> {
+    if is_debug() {
+        eprintln!(
+            "[DEBUG] obtener_sueldo_base: grado_id={}, anos_servicio={}",
+            grado_id, anos_servicio
+        );
+    }
+
     // 1. Filtrar directiva por código de grado (o ID)
     let directivas_grado: Vec<&Directiva> = directivas
         .iter()
         .filter(|d| d.grado_id == grado_id)
         .collect();
+
+    if is_debug() {
+        eprintln!(
+            "[DEBUG]   Directivas para grado_id={}: {} registros",
+            grado_id,
+            directivas_grado.len()
+        );
+    }
+
+    if directivas_grado.is_empty() {
+        if is_debug() {
+            eprintln!("[DEBUG]   -> NO hay directivas para este grado_id!");
+            eprintln!(
+                "[DEBUG]   -> Total de directivas disponibles: {}",
+                directivas.len()
+            );
+
+            // Mostrar algunos ejemplos de grados disponibles
+            let grados_disponibles: std::collections::HashSet<_> =
+                directivas.iter().map(|d| d.grado_id).collect();
+            let grados_vec: Vec<_> = grados_disponibles.iter().take(10).collect();
+            eprintln!("[DEBUG]   -> Grados disponibles: {:?}", grados_vec);
+        }
+        return None;
+    }
 
     // 2. Buscar el rango de antigüedad que corresponde
     let mut candidato = directivas_grado
@@ -106,6 +179,17 @@ pub fn obtener_sueldo_base(
 
     if candidato.is_none() {
         candidato = directivas_grado.iter().min_by_key(|d| d.antiguedad);
+    }
+
+    if is_debug() {
+        if let Some(d) = candidato {
+            eprintln!(
+                "[DEBUG]   Candidato: antiguedad={}, sueldo={}",
+                d.antiguedad, d.sueldo_base
+            );
+        } else {
+            eprintln!("[DEBUG]   -> NO se encontro candidato");
+        }
     }
 
     candidato.map(|d| d.sueldo_base)

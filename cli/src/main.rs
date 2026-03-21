@@ -86,6 +86,10 @@ enum Commands {
         /// Tipo de nómina a generar.
         #[arg(short = 't', long, value_enum, default_value = "npr")]
         tipo: TipoNominaCli,
+
+        /// Activa mensajes de debug para depuración.
+        #[arg(short = 'd', long = "debug")]
+        debug: bool,
     },
 
     /// Procesa conciliación de nómina desde un archivo local.
@@ -120,8 +124,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             sensors,
             manifest,
             tipo,
+            debug,
         }) => {
-            commands::start::execute(*execute, *log, *sensors, manifest.clone(), (*tipo).into()).await?;
+            commands::start::execute(*execute, *log, *sensors, manifest.clone(), (*tipo).into(), *debug).await?;
         }
         Some(Commands::Conciliacion { archivo }) => {
             commands::conciliacion::execute(archivo.clone()).await;

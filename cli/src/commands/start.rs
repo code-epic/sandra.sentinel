@@ -27,7 +27,13 @@ pub async fn execute(
     sensors: bool,
     manifest_path: Option<String>,
     tipo: TipoNomina,
+    debug: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Guardar flag de debug globalmente para usar en otros modulos
+    if debug {
+        std::env::set_var("SANDRA_DEBUG", "1");
+        println!("[DEBUG] Modo debug habilitado");
+    }
     telemetria::init(sensors);
 
     // --- BANNER DE INICIO ---
@@ -106,53 +112,63 @@ pub async fn execute(
                     // Vector para almacenar resultados y generar manifest
                     let mut resultados_export: Vec<exportador::ResultadoExport> = Vec::new();
 
-                    // EXPORTACION NÓMINA DINÁMICA
-                    let t_export = std::time::Instant::now();
+                    // Determinar tipo de nómina como string
+                    let tipo_str = match tipo {
+                        sandra_core::tipos::TipoNomina::Npr => "npr",
+                        sandra_core::tipos::TipoNomina::Nact => "nact",
+                        sandra_core::tipos::TipoNomina::Nrcp => "nrcp",
+                        sandra_core::tipos::TipoNomina::Nfcp => "nfcp",
+                    };
                     let es_nfcp = matches!(tipo, sandra_core::tipos::TipoNomina::Nfcp);
 
-                    match exportador::exportar_nomina_dinamica(
+                    // EXPORTACION NÓMINA POR TIPO
+                    let t_export = std::time::Instant::now();
+
+                    match exportador::exportar_nomina_por_tipo(
                         &system.kernel.beneficiarios,
                         ciclo,
+                        tipo_str,
                         destino,
                         comprimir,
                         nivel,
                         es_nfcp,
                     ) {
-                        Ok(resultado) => {
+                        Ok(resultados_nomina) => {
                             telemetria::record(
                                 "EXPORT",
                                 "CSV Nómina",
                                 t_export.elapsed(),
                                 system.kernel.beneficiarios.len(),
-                                &format!("{} bytes", resultado.tamano_original),
+                                &format!("{} archivos", resultados_nomina.len()),
                             );
 
-                            println!(
-                                "  {:<25} : {:>10} ({})",
-                                "Exportación Nómina",
-                                "OK",
-                                path_relative(&resultado.ruta, &destino)
-                            );
-
-                            // Mostrar hash SHA256
-                            if let Some(hash) = &resultado.hash_sha256 {
+                            for resultado in resultados_nomina {
                                 println!(
-                                    "    {:<23} : SHA256: {}",
-                                    "Firma Digital",
-                                    hash
+                                    "  {:<25} : {:>10} ({})",
+                                    "Exportación Nómina",
+                                    "OK",
+                                    path_relative(&resultado.ruta, &destino)
                                 );
-                            }
 
-                            if resultado.compresion_aplicada {
-                                println!(
-                                    "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
-                                    "Compresión",
-                                    resultado.tamano_original,
-                                    resultado.tamano_comprimido.unwrap_or(0)
-                                );
-                            }
+                                if let Some(hash) = &resultado.hash_sha256 {
+                                    println!(
+                                        "    {:<23} : SHA256: {}",
+                                        "Firma Digital",
+                                        hash
+                                    );
+                                }
 
-                            resultados_export.push(resultado);
+                                if resultado.compresion_aplicada {
+                                    println!(
+                                        "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
+                                        "Compresión",
+                                        resultado.tamano_original,
+                                        resultado.tamano_comprimido.unwrap_or(0)
+                                    );
+                                }
+
+                                resultados_export.push(resultado);
+                            }
                         }
                         Err(e) => {
                             let msg = format!("Error exportando CSV: {}", e);
@@ -162,8 +178,9 @@ pub async fn execute(
                         }
                     }
 
-                    // EXPORTACIÓN APORTE (si está habilitado)
-                    if system.kernel.config.aportes.habilitar {
+                    // EXPORTACIÓN APORTE (SOLO para NPR y si está habilitado)
+                    if matches!(tipo, sandra_core::tipos::TipoNomina::Npr) 
+                       && system.kernel.config.aportes.habilitar {
                         let t_export_aporte = std::time::Instant::now();
 
                         match exportador::exportar_aporte_csv(
@@ -189,7 +206,6 @@ pub async fn execute(
                                     path_relative(&resultado.ruta, &destino)
                                 );
 
-                                // Mostrar hash SHA256
                                 if let Some(hash) = &resultado.hash_sha256 {
                                     println!(
                                         "    {:<23} : SHA256: {}",
@@ -218,19 +234,20 @@ pub async fn execute(
                         }
                     }
 
-                    // GENERAR ARCHIVOS TXT BANCARIOS
-                    if let Some(format_txt) = &system.kernel.config.salida.format_txt {
-                        let bancos = &system.kernel.config.salida.bancos;
-                        if !bancos.is_empty() {
-                            println!("\n{:-<80}", "");
-                            println!("{:^80}", "GENERANDO ARCHIVOS TXT BANCARIOS");
-                            println!("{:-<80}\n", "");
+                    // GENERAR ARCHIVOS TXT BANCARIOS (SOLO para NPR)
+                    if matches!(tipo, sandra_core::tipos::TipoNomina::Npr) {
+                        if let Some(format_txt) = &system.kernel.config.salida.format_txt {
+                            let bancos = &system.kernel.config.salida.bancos;
+                            if !bancos.is_empty() {
+                                println!("\n{:-<80}", "");
+                                println!("{:^80}", "GENERANDO ARCHIVOS TXT BANCARIOS");
+                                println!("{:-<80}\n", "");
 
-                            let tipo = TipoArchivo::from_str(format_txt).unwrap_or(TipoArchivo::Aporte);
-                            let comprimir = system.kernel.config.salida.compresion;
-                            let nivel = system.kernel.config.salida.nivel_compresion;
-                            
-                            for codigo_banco in bancos {
+                                let tipo = TipoArchivo::from_str(format_txt).unwrap_or(TipoArchivo::Aporte);
+                                let comprimir = system.kernel.config.salida.compresion;
+                                let nivel = system.kernel.config.salida.nivel_compresion;
+                                
+                                for codigo_banco in bancos {
                                 println!("> Procesando banco: {}...", codigo_banco);
                                 
                                 match codigo_banco.as_str() {
@@ -314,6 +331,7 @@ pub async fn execute(
                             }
                         }
                     }
+                    }  // Cierre if NPR para TXT bancarios
 
                     // GENERAR MANIFEST
                     if !resultados_export.is_empty() {

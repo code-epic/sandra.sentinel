@@ -7,10 +7,12 @@
   "version": "1.0.0",
   "salida": {
     "destino": "./nm",
-    "compresion": true,
+    "compresion": false,
     "nivel_compresion": 3,
     "format_txt": "aporte",
-    "bancos": ["0102"]
+    "bancos": [
+      "0102"
+    ]
   },
   "aportes": {
     "habilitar": true,

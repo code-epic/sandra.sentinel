@@ -236,15 +236,15 @@ mod tests {
 
     #[test]
     fn test_generar_calculos_sin_anticipo() {
-        let mut base = create_test_base();
+        let mut bases = [create_test_base()];
         let movimientos = vec![];
 
-        generar_calculos(&mut [&mut base], &movimientos, 0.0);
+        generar_calculos(&mut bases, &movimientos, 0.0);
 
-        assert!(base.sueldo_mensual > 0.0);
-        assert!(base.aguinaldos > 0.0);
-        assert!(base.vacaciones > 0.0);
-        assert!(base.garantias > 0.0);
+        assert!(bases[0].sueldo_mensual > 0.0);
+        assert!(bases[0].aguinaldos > 0.0);
+        assert!(bases[0].vacaciones > 0.0);
+        assert!(bases[0].garantias > 0.0);
     }
 
     #[test]
