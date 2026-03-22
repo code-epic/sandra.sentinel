@@ -150,9 +150,9 @@ jobs:
             | sed "s/version \"[^\"]*\"/version \"$VERSION\"/" \
             | sed "s|vVERSION_PLACEHOLDER|v$VERSION|g" \
             | sed "s|/download/v[0-9][^/]*/|/download/v$VERSION/|g" \
-            | sed "s|sha256 \"[^\"]*# sandra-sentinel-aarch64-apple-darwin\"|sha256 \"${SHASUMS[sandra-sentinel-aarch64-apple-darwin]} # sandra-sentinel-aarch64-apple-darwin\"|" \
-            | sed "s|sha256 \"[^\"]*# sandra-sentinel-x86_64-apple-darwin\"|sha256 \"${SHASUMS[sandra-sentinel-x86_64-apple-darwin]} # sandra-sentinel-x86_64-apple-darwin\"|" \
-            | sed "s|sha256 \"[^\"]*# sandra-sentinel-centos8-x86_64\"|sha256 \"${SHASUMS[sandra-sentinel-centos8-x86_64]} # sandra-sentinel-centos8-x86_64\"|")
+            | sed "s|sha256 \"[^\"]*# sandra-sentinel-aarch64-apple-darwin\"|sha256 \"${SHASUMS[sandra-sentinel-aarch64-apple-darwin]}\"|" \
+            | sed "s|sha256 \"[^\"]*# sandra-sentinel-x86_64-apple-darwin\"|sha256 \"${SHASUMS[sandra-sentinel-x86_64-apple-darwin]}\"|" \
+            | sed "s|sha256 \"[^\"]*# sandra-sentinel-centos8-x86_64\"|sha256 \"${SHASUMS[sandra-sentinel-centos8-x86_64]}\"|")
 
           echo "--- Formula actualizada ---"
           echo "$UPDATED" | grep -E "(url|version|sha256)"
