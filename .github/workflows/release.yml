@@ -118,52 +118,47 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout homebrew-tap
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.HOMEBREW_TAP_REPO }}
-          token: ${{ secrets.HOMEBREW_TOKEN }}
-          path: homebrew-tap
-
-      - name: Verify HOMEBREW_TOKEN
+      - name: Update formula via GitHub API
         env:
-          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
-        run: |
-          TOKEN_LEN=${#HOMEBREW_TOKEN}
-          echo "HOMEBREW_TOKEN length: $TOKEN_LEN"
-          if [ "$TOKEN_LEN" -eq 0 ]; then
-            echo "::error::HOMEBREW_TOKEN secret está vacío. Ve a Settings > Secrets and variables > Actions en sandra.sentinel y configura HOMEBREW_TOKEN con un PAT válido."
-            exit 1
-          fi
-          echo "Token OK (longitud: $TOKEN_LEN)"
-
-      - name: Update formula
-        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
           VERSION: ${{ github.ref_name }}
-          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          
-          cd homebrew-tap
-          
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          sed -i "s/version \"[^\"]*\"/version \"$VERSION\"/" Formula/${{ env.HOMEBREW_FORMULA }}
-          sed -i "s/vVERSION_PLACEHOLDER/v$VERSION/g" Formula/${{ env.HOMEBREW_FORMULA }}
-          
           ASSETS_URL="https://github.com/code-epic/sandra.sentinel/releases/download/v$VERSION"
-          
+          FORMULA_PATH="Formula/sandra-sentinel.rb"
+          REPO="${{ env.HOMEBREW_TAP_REPO }}"
+
+          # Descargar binarios y calcular sha256
+          declare -A SHASUMS
           for binary in sandra-sentinel-aarch64-apple-darwin sandra-sentinel-x86_64-apple-darwin sandra-sentinel-centos8-x86_64; do
+            echo "Downloading $binary..."
             curl -sL "$ASSETS_URL/$binary" -o "/tmp/$binary"
-            sha=$(sha256sum "/tmp/$binary" | awk '{print $1}')
-            sed -i "s|sha256 \".*\" # $binary|sha256 \"$sha\" # $binary|" Formula/${{ env.HOMEBREW_FORMULA }}
+            SHASUMS[$binary]=$(sha256sum "/tmp/$binary" | awk '{print $1}')
+            echo "$binary sha256: ${SHASUMS[$binary]}"
           done
-          
-          cat Formula/${{ env.HOMEBREW_FORMULA }} | grep -E "(url|version|sha256)"
-          
-          git add Formula/${{ env.HOMEBREW_FORMULA }}
-          git diff --staged --stat
-          git commit -m "Release v$VERSION"
-          git remote set-url origin "https://x-access-token:${HOMEBREW_TOKEN}@github.com/${{ env.HOMEBREW_TAP_REPO }}.git"
-          GIT_TRACE=1 git push origin main 2>&1 | grep -v "x-access-token"
+
+          # Obtener el contenido actual de la fórmula via API
+          FILE_INFO=$(gh api "repos/$REPO/contents/$FORMULA_PATH")
+          FILE_SHA=$(echo "$FILE_INFO" | jq -r '.sha')
+          CONTENT=$(echo "$FILE_INFO" | jq -r '.content' | base64 -d)
+
+          # Aplicar sustituciones
+          UPDATED=$(echo "$CONTENT" \
+            | sed "s/version \"[^\"]*\"/version \"$VERSION\"/" \
+            | sed "s|vVERSION_PLACEHOLDER|v$VERSION|g" \
+            | sed "s|sha256 \".*\" # sandra-sentinel-aarch64-apple-darwin|sha256 \"${SHASUMS[sandra-sentinel-aarch64-apple-darwin]}\" # sandra-sentinel-aarch64-apple-darwin|" \
+            | sed "s|sha256 \".*\" # sandra-sentinel-x86_64-apple-darwin|sha256 \"${SHASUMS[sandra-sentinel-x86_64-apple-darwin]}\" # sandra-sentinel-x86_64-apple-darwin|" \
+            | sed "s|sha256 \".*\" # sandra-sentinel-centos8-x86_64|sha256 \"${SHASUMS[sandra-sentinel-centos8-x86_64]}\" # sandra-sentinel-centos8-x86_64|")
+
+          echo "--- Formula actualizada ---"
+          echo "$UPDATED" | grep -E "(url|version|sha256)"
+
+          # Subir via API (sin git push)
+          ENCODED=$(echo "$UPDATED" | base64 -w 0)
+          gh api "repos/$REPO/contents/$FORMULA_PATH" \
+            --method PUT \
+            --field message="Release v$VERSION" \
+            --field content="$ENCODED" \
+            --field sha="$FILE_SHA"
+
+          echo "✅ Fórmula actualizada exitosamente"
