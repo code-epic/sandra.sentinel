@@ -30,7 +30,7 @@ jobs:
             cross: true
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: sandra-sentinel-x86_64-unknown-linux-gnu
+            artifact_name: sandra-sentinel-centos8-x86_64
             cross: false
 
     runs-on: ${{ matrix.os }}
@@ -51,8 +51,8 @@ jobs:
           else
             PROTOC_VERSION="25.1"
             curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
-            unzip -o "protoc-${PROTOC_VERSION}-linux-x86_64.zip" -d /usr/local
-            rm "protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+            unzip -o "protoc-${PROTOC_VERSION}-linux-x86_64.zip" -d $HOME/.local
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
           fi
 
       - name: Install cross toolchain (macOS cross-compile)
@@ -138,7 +138,7 @@ jobs:
           
           ASSETS_URL="https://github.com/code-epic/sandra.sentinel/releases/download/v$VERSION"
           
-          for binary in sandra-sentinel-aarch64-apple-darwin sandra-sentinel-x86_64-apple-darwin sandra-sentinel-x86_64-unknown-linux-gnu; do
+          for binary in sandra-sentinel-aarch64-apple-darwin sandra-sentinel-x86_64-apple-darwin sandra-sentinel-centos8-x86_64; do
             curl -sL "$ASSETS_URL/$binary" -o "/tmp/$binary"
             sha=$(sha256sum "/tmp/$binary" | awk '{print $1}')
             sed -i "s|sha256 \".*\" # $binary|sha256 \"$sha\" # $binary|" Formula/${{ env.HOMEBREW_FORMULA }}
