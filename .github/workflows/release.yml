@@ -125,6 +125,18 @@ jobs:
           token: ${{ secrets.HOMEBREW_TOKEN }}
           path: homebrew-tap
 
+      - name: Verify HOMEBREW_TOKEN
+        env:
+          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
+        run: |
+          TOKEN_LEN=${#HOMEBREW_TOKEN}
+          echo "HOMEBREW_TOKEN length: $TOKEN_LEN"
+          if [ "$TOKEN_LEN" -eq 0 ]; then
+            echo "::error::HOMEBREW_TOKEN secret está vacío. Ve a Settings > Secrets and variables > Actions en sandra.sentinel y configura HOMEBREW_TOKEN con un PAT válido."
+            exit 1
+          fi
+          echo "Token OK (longitud: $TOKEN_LEN)"
+
       - name: Update formula
         env:
           VERSION: ${{ github.ref_name }}
@@ -154,4 +166,4 @@ jobs:
           git diff --staged --stat
           git commit -m "Release v$VERSION"
           git remote set-url origin "https://x-access-token:${HOMEBREW_TOKEN}@github.com/${{ env.HOMEBREW_TAP_REPO }}.git"
-          git push origin main
+          GIT_TRACE=1 git push origin main 2>&1 | grep -v "x-access-token"
