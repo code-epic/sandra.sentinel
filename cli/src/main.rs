@@ -92,6 +92,44 @@ enum Commands {
         debug: bool,
     },
 
+    /// Compara archivos CSV para conciliación bancaria.
+    #[command(
+        long_about = "Compara dos archivos CSV para identificar coincidencias y hallazgos.\n\nEjemplo:\n  sandra conciliate --comparison banco.csv --comparison-columns 0,1,2 --origin sistema.csv --origin-columns 0,1,3"
+    )]
+    Conciliate {
+        /// Archivo de comparación (ej. movimientos del banco)
+        #[arg(short, long)]
+        comparison: String,
+
+        /// Columnas a usar como clave en el archivo de comparación (ej. "0,1,2")
+        #[arg(long)]
+        comparison_columns: String,
+
+        /// Archivo de origen (ej. registros del sistema)
+        #[arg(short, long)]
+        origin: String,
+
+        /// Columnas del archivo origen
+        #[arg(long)]
+        origin_columns: String,
+
+        /// Delimitador (default: ";")
+        #[arg(long, default_value = ";")]
+        delimiter: String,
+
+        /// Directorio de salida (default: "out")
+        #[arg(long, default_value = "out")]
+        output: String,
+
+        /// Omitir primera línea (header)
+        #[arg(long)]
+        skip_header: bool,
+
+        /// Modo silencioso
+        #[arg(short, long)]
+        quiet: bool,
+    },
+
     /// Procesa conciliación de nómina desde un archivo local.
     #[command(
         long_about = "Permite procesar archivos de nómina para validación y conciliación manual.\nAnteriormente conocido como modo Lote."
@@ -127,6 +165,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             debug,
         }) => {
             commands::start::execute(*execute, *log, *sensors, manifest.clone(), (*tipo).into(), *debug).await?;
+        }
+        Some(Commands::Conciliate {
+            comparison,
+            comparison_columns,
+            origin,
+            origin_columns,
+            delimiter,
+            output,
+            skip_header,
+            quiet,
+        }) => {
+            commands::conciliate::execute(
+                comparison.clone(),
+                comparison_columns.clone(),
+                origin.clone(),
+                origin_columns.clone(),
+                delimiter.clone(),
+                output.clone(),
+                *skip_header,
+                *quiet,
+            ).await?;
         }
         Some(Commands::Conciliacion { archivo }) => {
             commands::conciliacion::execute(archivo.clone()).await;

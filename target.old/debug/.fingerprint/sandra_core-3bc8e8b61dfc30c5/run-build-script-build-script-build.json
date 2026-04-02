@@ -1,0 +1,1 @@
+{"rustc":4602891280094040588,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[9535247194063814924,"build_script_build",false,16917880573944541933]],"local":[{"RerunIfChanged":{"output":"debug/build/sandra_core-3bc8e8b61dfc30c5/output","paths":["proto/sentinel_service.proto","proto"]}}],"rustflags":[],"config":0,"compile_kind":0}

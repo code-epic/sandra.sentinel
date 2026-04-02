@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 sandra_core = { path = "../core" }
+scf = { path = "../core/src/scf" }
 clap = { version = "4.4", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }

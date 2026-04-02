@@ -1,0 +1,12 @@
+/Users/crash/dev/rust/sandra.sentinel/target/debug/deps/smartstring-689f1f81c1707128.d: /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/lib.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/config.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/marker_byte.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/inline.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/boxed.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/casts.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/iter.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/ops.rs
+
+/Users/crash/dev/rust/sandra.sentinel/target/debug/deps/libsmartstring-689f1f81c1707128.rmeta: /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/lib.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/config.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/marker_byte.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/inline.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/boxed.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/casts.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/iter.rs /Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/ops.rs
+
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/lib.rs:
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/config.rs:
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/marker_byte.rs:
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/inline.rs:
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/boxed.rs:
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/casts.rs:
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/iter.rs:
+/Users/crash/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smartstring-1.0.1/src/ops.rs:

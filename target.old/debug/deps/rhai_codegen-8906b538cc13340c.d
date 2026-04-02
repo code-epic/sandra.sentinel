@@ -1,0 +1,11 @@
+/Users/imac/dev/rust/sandra.sentinel/target/debug/deps/rhai_codegen-8906b538cc13340c.d: /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/lib.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/attrs.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/custom_type.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/function.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/module.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/register.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/rhai_module.rs
+
+/Users/imac/dev/rust/sandra.sentinel/target/debug/deps/librhai_codegen-8906b538cc13340c.dylib: /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/lib.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/attrs.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/custom_type.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/function.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/module.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/register.rs /Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/rhai_module.rs
+
+/Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/lib.rs:
+/Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/attrs.rs:
+/Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/custom_type.rs:
+/Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/function.rs:
+/Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/module.rs:
+/Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/register.rs:
+/Users/imac/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rhai_codegen-3.1.0/src/rhai_module.rs:

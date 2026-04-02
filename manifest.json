@@ -7,7 +7,7 @@
   "version": "1.0.0",
   "salida": {
     "destino": "./nm",
-    "compresion": false,
+    "compresion": true,
     "nivel_compresion": 3,
     "format_txt": "aporte",
     "bancos": [
