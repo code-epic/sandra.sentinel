@@ -1,4 +1,5 @@
 use super::logger;
+use crate::banco::tipos::TipoArchivo;
 use crate::kernel::logica::memoria::Beneficiario;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -393,6 +394,177 @@ pub fn exportar_aporte_csv(
         resultado = ResultadoExport {
             ruta: ruta_completa.display().to_string(),
             tipo: "aporte".to_string(),
+            tamano_original,
+            tamano_comprimido: None,
+            hash_sha256: Some(hash.clone()),
+            hash_sha256_original: Some(hash),
+            compresion_aplicada: false,
+        };
+    }
+
+    Ok(resultado)
+}
+
+pub fn exportar_aporte_y_apertura_txt(
+    beneficiaries: &Vec<Beneficiario>,
+    ciclo: &str,
+    destino: &str,
+    comprimir: bool,
+    nivel_compresion: i32,
+) -> Result<(ResultadoExport, ResultadoExport), Box<dyn std::error::Error>> {
+    let mut aporte = Vec::new();
+    let mut apertura = Vec::new();
+
+    for b in beneficiaries {
+        let m = &b.movimientos;
+        let total_mov = m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor;
+        if total_mov > 0.0 {
+            aporte.push(b.clone());
+        } else {
+            apertura.push(b.clone());
+        }
+    }
+
+    println!(
+        "    > Dividiendo beneficiarios: {} aporte, {} apertura",
+        aporte.len(),
+        apertura.len()
+    );
+
+    let res_aporte = exportar_aporte_csv(&mut aporte, ciclo, destino, comprimir, nivel_compresion)?;
+    let res_apertura = crate::banco::venezuela::generar_txt_venezuela(
+        &apertura,
+        TipoArchivo::Apertura,
+        ciclo,
+        destino,
+        100.0,
+        comprimir,
+        nivel_compresion,
+    )?;
+
+    Ok((res_aporte, res_apertura))
+}
+
+pub fn exportar_aporte_y_apertura_csv(
+    beneficiarios: &Vec<Beneficiario>,
+    ciclo: &str,
+    destino: &str,
+    comprimir: bool,
+    nivel_compresion: i32,
+) -> Result<ResultadoExport, Box<dyn std::error::Error>> {
+    let nombre_archivo = format!("apertura_{}.csv", ciclo);
+    let ruta_completa = if destino == "." || destino.is_empty() {
+        PathBuf::from(&nombre_archivo)
+    } else {
+        PathBuf::from(destino).join(&nombre_archivo)
+    };
+
+    let nombre_mostrar = ruta_completa
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| nombre_archivo.clone());
+
+    println!(
+        "> Exportando archivo de apertura a CSV en '{}' ({} registros)...",
+        nombre_mostrar,
+        beneficiarios.len()
+    );
+
+    if beneficiarios.is_empty() {
+        println!("    > No hay beneficiarios para apertura (todos tienen movimientos)");
+        return Ok(ResultadoExport {
+            ruta: String::new(),
+            tipo: "apertura".to_string(),
+            tamano_original: 0,
+            tamano_comprimido: None,
+            hash_sha256: None,
+            hash_sha256_original: None,
+            compresion_aplicada: false,
+        });
+    }
+
+    let file = File::create(&ruta_completa)?;
+    let mut wtr = csv::Writer::from_writer(file);
+
+    wtr.write_record(&[
+        "cedula",
+        "nombres",
+        "apellidos",
+        "numero_cuenta",
+        "garantia_original",
+    ])?;
+
+    for b in beneficiarios {
+        wtr.write_record(&[
+            &b.cedula,
+            &b.nombres,
+            &b.apellidos,
+            &b.numero_cuenta,
+            &format!("{:.2}", b.base.garantia_original),
+        ])?;
+    }
+
+    wtr.flush()?;
+
+    let datos_csv = std::fs::read(&ruta_completa)?;
+    let tamano_original = datos_csv.len() as u64;
+    let hash_csv = generar_hash(&datos_csv);
+    let resultado: ResultadoExport;
+
+    if comprimir {
+        println!(
+            "    > Comprimiendo archivo con zstd (nivel {})...",
+            nivel_compresion
+        );
+        let (comprimido, hash) = comprimir_y_sellar(&datos_csv, nivel_compresion);
+
+        let ruta_zst = ruta_completa.with_extension("csv.zst");
+        let mut archivo_zst = File::create(&ruta_zst)?;
+        archivo_zst.write_all(&comprimido)?;
+
+        std::fs::remove_file(&ruta_completa)?;
+
+        let nombre_zst = ruta_zst
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| ruta_zst.display().to_string());
+
+        println!(
+            "    > Archivo comprimido: {} (Original: {} bytes, Comprimido: {} bytes)",
+            nombre_zst,
+            tamano_original,
+            comprimido.len()
+        );
+
+        logger::log_info(
+            "EXPORT_APERTURA",
+            &format!("Archivo comprimido: {} - Hash: {}", nombre_zst, &hash[..16]),
+        );
+
+        resultado = ResultadoExport {
+            ruta: ruta_zst.display().to_string(),
+            tipo: "apertura".to_string(),
+            tamano_original,
+            tamano_comprimido: Some(comprimido.len() as u64),
+            hash_sha256: Some(hash),
+            hash_sha256_original: Some(hash_csv),
+            compresion_aplicada: true,
+        };
+    } else {
+        let hash = generar_hash(&datos_csv);
+
+        logger::log_info(
+            "EXPORT_APERTURA",
+            &format!(
+                "Archivo CSV generado: {} - Hash: {}",
+                ruta_completa.display(),
+                &hash[..16]
+            ),
+        );
+
+        resultado = ResultadoExport {
+            ruta: ruta_completa.display().to_string(),
+            tipo: "apertura".to_string(),
             tamano_original,
             tamano_comprimido: None,
             hash_sha256: Some(hash.clone()),

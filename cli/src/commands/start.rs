@@ -183,53 +183,131 @@ pub async fn execute(
                        && system.kernel.config.aportes.habilitar {
                         let t_export_aporte = std::time::Instant::now();
 
-                        match exportador::exportar_aporte_csv(
-                            &system.kernel.beneficiarios,
-                            ciclo,
-                            destino,
-                            comprimir,
-                            nivel,
-                        ) {
-                            Ok(resultado) => {
-                                telemetria::record(
-                                    "EXPORT",
-                                    "CSV Aporte",
-                                    t_export_aporte.elapsed(),
-                                    system.kernel.beneficiarios.len(),
-                                    &format!("{} bytes", resultado.tamano_original),
-                                );
+                        if system.kernel.config.aportes.generar_apertura_con_aporte {
+                            println!("\n{:-<80}", "");
+                            println!("{:^80}", "EXPORTANDO APORTE Y APERTURA CONJUNTOS");
+                            println!("{:-<80}\n", "");
 
-                                println!(
-                                    "  {:<25} : {:>10} ({})",
-                                    "Exportación Aporte",
-                                    "OK",
-                                    path_relative(&resultado.ruta, &destino)
-                                );
-
-                                if let Some(hash) = &resultado.hash_sha256 {
-                                    println!(
-                                        "    {:<23} : SHA256: {}",
-                                        "Firma Digital",
-                                        hash
+                            match exportador::exportar_aporte_y_apertura_txt(
+                                &system.kernel.beneficiarios,
+                                ciclo,
+                                destino,
+                                comprimir,
+                                nivel,
+                            ) {
+                                Ok((res_aporte, res_apertura)) => {
+                                    telemetria::record(
+                                        "EXPORT",
+                                        "CSV Aporte+Apertura",
+                                        t_export_aporte.elapsed(),
+                                        system.kernel.beneficiarios.len(),
+                                        &format!("aporte:{} bytes", res_aporte.tamano_original),
                                     );
-                                }
 
-                                if resultado.compresion_aplicada {
                                     println!(
-                                        "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
-                                        "Compresión",
-                                        resultado.tamano_original,
-                                        resultado.tamano_comprimido.unwrap_or(0)
+                                        "  {:<25} : {:>10} ({})",
+                                        "Exportación Aporte",
+                                        "OK",
+                                        path_relative(&res_aporte.ruta, &destino)
                                     );
-                                }
 
-                                resultados_export.push(resultado);
+                                    if let Some(hash) = &res_aporte.hash_sha256 {
+                                        println!("    {:<23} : SHA256: {}", "Firma Digital", hash);
+                                    }
+
+                                    if res_aporte.compresion_aplicada {
+                                        println!(
+                                            "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
+                                            "Compresión",
+                                            res_aporte.tamano_original,
+                                            res_aporte.tamano_comprimido.unwrap_or(0)
+                                        );
+                                    }
+
+                                    resultados_export.push(res_aporte);
+
+                                    if res_apertura.tamano_original > 0 {
+                                        println!(
+                                            "  {:<25} : {:>10} ({})",
+                                            "Exportación Apertura",
+                                            "OK",
+                                            path_relative(&res_apertura.ruta, &destino)
+                                        );
+
+                                        if let Some(hash) = &res_apertura.hash_sha256 {
+                                            println!("    {:<23} : SHA256: {}", "Firma Digital", hash);
+                                        }
+
+                                        if res_apertura.compresion_aplicada {
+                                            println!(
+                                                "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
+                                                "Compresión",
+                                                res_apertura.tamano_original,
+                                                res_apertura.tamano_comprimido.unwrap_or(0)
+                                            );
+                                        }
+
+                                        resultados_export.push(res_apertura);
+                                    } else {
+                                        println!("  {:<25} : {:>10}", "Exportación Apertura", "SKIP (vacío)");
+                                    }
+                                }
+                                Err(e) => {
+                                    let msg = format!("Error exportando CSV de aporte y apertura: {}", e);
+                                    eprintln!("  {:<25} : {:>10}", "Export Aporte+Apertura", "FALLO");
+                                    eprintln!("    └─ [ERROR] {}", msg);
+                                    logger::log_error("EXPORT", &msg);
+                                }
                             }
-                            Err(e) => {
-                                let msg = format!("Error exportando CSV de aporte: {}", e);
-                                eprintln!("  {:<25} : {:>10}", "Exportación Aporte", "FALLO");
-                                eprintln!("    └─ [ERROR] {}", msg);
-                                logger::log_error("EXPORT", &msg);
+                        } else {
+                            match exportador::exportar_aporte_csv(
+                                &system.kernel.beneficiarios,
+                                ciclo,
+                                destino,
+                                comprimir,
+                                nivel,
+                            ) {
+                                Ok(resultado) => {
+                                    telemetria::record(
+                                        "EXPORT",
+                                        "CSV Aporte",
+                                        t_export_aporte.elapsed(),
+                                        system.kernel.beneficiarios.len(),
+                                        &format!("{} bytes", resultado.tamano_original),
+                                    );
+
+                                    println!(
+                                        "  {:<25} : {:>10} ({})",
+                                        "Exportación Aporte",
+                                        "OK",
+                                        path_relative(&resultado.ruta, &destino)
+                                    );
+
+                                    if let Some(hash) = &resultado.hash_sha256 {
+                                        println!(
+                                            "    {:<23} : SHA256: {}",
+                                            "Firma Digital",
+                                            hash
+                                        );
+                                    }
+
+                                    if resultado.compresion_aplicada {
+                                        println!(
+                                            "    {:<23} : Original: {} bytes, Comprimido: {} bytes",
+                                            "Compresión",
+                                            resultado.tamano_original,
+                                            resultado.tamano_comprimido.unwrap_or(0)
+                                        );
+                                    }
+
+                                    resultados_export.push(resultado);
+                                }
+                                Err(e) => {
+                                    let msg = format!("Error exportando CSV de aporte: {}", e);
+                                    eprintln!("  {:<25} : {:>10}", "Exportación Aporte", "FALLO");
+                                    eprintln!("    └─ [ERROR] {}", msg);
+                                    logger::log_error("EXPORT", &msg);
+                                }
                             }
                         }
                     }

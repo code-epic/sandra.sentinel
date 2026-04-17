@@ -380,6 +380,75 @@ El sistema soporta cuatro tipos de archivos (`TipoArchivo`) configurables desde 
 
 ---
 
+## Generación Automática de Apertura y Aporte
+
+A partir de la versión 1.1.0, Sentinel implementa un sistema de división automática que permite procesar nóminas donde no todos los beneficiarios tienen movimientos en el período. Esta funcionalidad es útil cuando la cantidad de beneficiarios registrados excede la cantidad de movimientos en el ciclo.
+
+### Lógica de División
+
+El sistema evalúa cada beneficiario según sus movimientos:
+
+```rust
+let m = &b.movimientos;
+let total_mov = m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor;
+
+if total_mov > 0.0 {
+    // tiene movimientos → Aporte
+} else {
+    // sin movimientos → Apertura
+}
+```
+
+### Escenario de Uso
+
+| Entidad | Cantidad | Descripción |
+|--------|----------|-------------|
+| Beneficiarios | 113,422 | Total pensionados activos |
+| Movimientos | 87,626 | Registros de saldo en ciclo |
+| Diferencia | 25,796 | Sin movimientos → Apertura |
+
+### Configuración del Manifiesto
+
+```json
+{
+  "nombre": "Nómina Enero 2026",
+  "ciclo": "2026-01",
+  "aportes": {
+    "habilitar": true,
+    "monto_aprobado_garantias": 40000000.00,
+    "generar_apertura_con_aporte": true
+  },
+  "salida": {
+    "destino": "./nm",
+    "compresion": true,
+    "nivel_compresion": 3
+  }
+}
+```
+
+### Archivos Generados
+
+| Archivo | Contenido | Formato |
+|---------|----------|--------|
+| `aporte_2026-01.csv.zst` | Beneficiarios con movimientos | CSV comprimido |
+| `APERT2026-01.txt.zst` | Beneficiarios sin movimientos | TXT banco |
+
+### Ejemplo de Ejecución
+
+```bash
+cargo run -p sandra_sentinel -- start -x --log --sensors --tipo npr -m manifest.json
+```
+
+**Salida esperada:**
+```
+EXPORTANDO APORTE Y APERTURA CONJUNTOS
+    > Dividiendo beneficiarios: 87626 aporte, 25796 apertura
+  Exportación Aporte        :         OK (aporte_2026-01.csv.zst)
+  Exportación Apertura      :         OK (APERT2026-01.txt.zst)
+```
+
+---
+
 ## Auditoría y Conciliación (Framework SCF)
 
 El sistema incluye el módulo **SCF (Financial Control Framework)**, diseñado para conciliar la "verdad del sistema" contra la "verdad del banco".
@@ -535,6 +604,7 @@ Cada entrada en este mapa define una fuente de datos gRPC:
 Gestiona la distribución de montos aprobados:
 - **`habilitar`**: Boolean para activar el algoritmo de repartición proporcional.
 - **`monto_aprobado_garantias`**: Monto total Bs. a distribuir entre los beneficiarios.
+- **`generar_apertura_con_aporte`** (v1.1.0+): Boolean para generar automáticamente archivo de apertura para beneficiarios sin movimientos.
 
 #### D. Configuración de Salida (`salida`)
 - **`destino`**: Carpeta donde se generarán los CSV/NDJSON.

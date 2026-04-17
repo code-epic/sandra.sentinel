@@ -9,6 +9,9 @@ pub struct AporteConfig {
 
     #[serde(default)]
     pub monto_aprobado_garantias: f64,
+
+    #[serde(default)]
+    pub generar_apertura_con_aporte: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

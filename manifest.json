@@ -16,7 +16,8 @@
   },
   "aportes": {
     "habilitar": true,
-    "monto_aprobado_garantias": 40000000.00
+    "monto_aprobado_garantias": 40000000.00,
+		"generar_apertura_con_aporte": true
   },
   "cargas": {
     "IPSFA_CPrimasFunciones": {
