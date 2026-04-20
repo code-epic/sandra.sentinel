@@ -9,6 +9,8 @@ pub enum TipoNominaCli {
     Nact,
     Nrcp,
     Nfcp,
+    // Nómina Patria
+    Npat,
 }
 
 impl From<TipoNominaCli> for TipoNomina {
@@ -18,13 +20,14 @@ impl From<TipoNominaCli> for TipoNomina {
             TipoNominaCli::Nact => TipoNomina::Nact,
             TipoNominaCli::Nrcp => TipoNomina::Nrcp,
             TipoNominaCli::Nfcp => TipoNomina::Nfcp,
+            TipoNominaCli::Npat => TipoNomina::Npat,
         }
     }
 }
 
 impl ValueEnum for TipoNominaCli {
     fn value_variants<'a>() -> &'a [Self] {
-        &[TipoNominaCli::Npr, TipoNominaCli::Nact, TipoNominaCli::Nrcp, TipoNominaCli::Nfcp]
+        &[TipoNominaCli::Npr, TipoNominaCli::Nact, TipoNominaCli::Nrcp, TipoNominaCli::Nfcp, TipoNominaCli::Npat]
     }
 
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
@@ -33,6 +36,7 @@ impl ValueEnum for TipoNominaCli {
             "nact" => Ok(TipoNominaCli::Nact),
             "nrcp" => Ok(TipoNominaCli::Nrcp),
             "nfcp" => Ok(TipoNominaCli::Nfcp),
+            "npat" => Ok(TipoNominaCli::Npat),
             _ => Err(format!("Unknown tipo: {}", input)),
         }
     }
@@ -43,6 +47,7 @@ impl ValueEnum for TipoNominaCli {
             TipoNominaCli::Nact => "nact",
             TipoNominaCli::Nrcp => "nrcp",
             TipoNominaCli::Nfcp => "nfcp",
+            TipoNominaCli::Npat => "npat",
         }))
     }
 }
@@ -130,6 +135,30 @@ enum Commands {
         quiet: bool,
     },
 
+    /// Genera Nómina Patria para el Sistema de Patrimonio.
+    #[command(
+        long_about = "Genera archivo de nómina para cargar en el Sistema Patria.\n\n\
+        Este proceso genera finiquitos de asignación de antigüedad en formato TXT para carga en el Sistema Patria.\n\n\
+        Parámetros (via manifisto):\n\
+        - fecha_desde: Fecha inicial del rango (YYYY-MM-DD)\n\
+        - fecha_hasta: Fecha final del rango (YYYY-MM-DD)\n\
+        - conciliacion: Generar reportes de control (default: false)\n\n\
+        Ejemplo:\n  sandra patria --manifest nomina_patria.json --tipo npat"
+    )]
+    Patria {
+        /// Ruta al archivo de manifiesto (.json) con configuración.
+        #[arg(short = 'm', long = "manifest")]
+        manifest: Option<String>,
+
+        /// Generar reportes de conciliación (montos negativos, sin cuenta, duplicados).
+        #[arg(short = 'c', long = "conciliacion")]
+        conciliacion: bool,
+
+        /// Activa mensajes de debug para depuración.
+        #[arg(short = 'd', long = "debug")]
+        debug: bool,
+    },
+
     /// Procesa conciliación de nómina desde un archivo local.
     #[command(
         long_about = "Permite procesar archivos de nómina para validación y conciliación manual.\nAnteriormente conocido como modo Lote."
@@ -192,6 +221,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Validar { clave }) => {
             commands::validar::execute(clave.clone());
+        }
+Some(Commands::Patria { manifest, conciliacion, debug }) => {
+            // Ejecutar comando Patria
+            commands::patria::execute(manifest.clone(), *conciliacion, *debug).await?;
         }
         Some(Commands::Version) => {
             commands::version::execute();

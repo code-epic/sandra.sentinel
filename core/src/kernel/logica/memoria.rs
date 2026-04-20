@@ -1,5 +1,92 @@
 use serde::{Deserialize, Serialize};
 
+// =============================================================================
+// ESTRUCTURA PARA NOMINA PATRIA - FINIQUITOS
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FiniquitoPatria {
+    /// Cédula del beneficiario (sin prefijo V/E)
+    pub cedula: String,
+
+    /// Apellidos y nombres del beneficiario
+    pub apellidos: String,
+
+    /// Número de cuenta bancaria (20 dígitos, debe empezar con 0102)
+    pub numero_cuenta: String,
+
+    /// Monto del finiquito (soporta string o number)
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub monto: f64,
+
+    /// Fecha contable del movimiento
+    pub f_contable: String,
+
+    /// Observaciones del movimiento (causal)
+    pub observaciones: String,
+}
+
+/// Transformación al formato TXT del Sistema Patria
+impl FiniquitoPatria {
+    /// Convierte la estructura al formato de línea TXT para Patria
+    ///
+    /// Formato detalle (80 columnas):
+    /// - Columnas 1-1: Letra de cédula (V o E)
+    /// - Columnas 2-9: Cédula (8 dígitos, padded)
+    /// - Columnas 10-29: Número de cuenta (20 dígitos)
+    /// - Columnas 30-40: Monto (11 dígitos, 9 enteros + 2 decimales)
+    /// - Columnas 41-80: Nombre (40 caracteres)
+    pub fn to_line_patria(&self) -> String {
+        // Campo 1: Letra de cédula
+        let letra_cedula = if self.cedula.starts_with('V') || self.cedula.starts_with('E') {
+            &self.cedula[0..1]
+        } else {
+            "V"
+        };
+
+        // Campo 2: Cédula padded a 8 dígitos
+        let cedula_clean: String = self.cedula.chars().filter(|c| c.is_ascii_digit()).collect();
+        let cedula_padded = format!("{:0>8}", cedula_clean);
+
+        // Campo 3: Número de cuenta (20 dígitos)
+        let cuenta_clean: String = self
+            .numero_cuenta
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect();
+        let cuenta_padded = format!("{:0<20}", cuenta_clean);
+
+        // Campo 4: Monto (11 dígitos: 9 enteros + 2 decimales)
+        let monto_centavos = (self.monto * 100.0).round() as i64;
+        let monto_padded = format!("{:0>11}", monto_centavos);
+
+        // Campo 5: Nombre (40 caracteres, padded con espacios)
+        let nombre_padded = format!("{: <40}", self.apellidos);
+
+        // Línea completa (80 columnas)
+        format!(
+            "{}{}{}{}{}",
+            letra_cedula, cedula_padded, cuenta_padded, monto_padded, nombre_padded
+        )
+    }
+
+    /// Valida que el registro cumpla las reglas para Patria
+    pub fn es_valido(&self) -> bool {
+        // Regla 1: Cuenta debe empezar con 0102
+        let cuenta_ok = self.numero_cuenta.starts_with("0102");
+
+        // Regla 2: Monto positivo
+        let monto_ok = self.monto > 0.0;
+
+        // Regla 3: Cédula válida
+        let cedula_ok = !self.cedula.is_empty() && self.cedula.len() >= 7;
+
+        cuenta_ok && monto_ok && cedula_ok
+    }
+}
+
+// =============================================================================
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Directiva {
     // Campos llave

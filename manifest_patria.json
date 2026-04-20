@@ -1,0 +1,46 @@
+{
+  "nombre": "Nómina Patria - Finiquitos Diciembre 2025",
+  "ciclo": "202512",
+  "descripcion": "Generación de archivo de finiquitos para carga en Sistema Patria. Período diciembre 2025.",
+  "tipo": "npat",
+  "version": "1.0.0",
+  "cargas": {
+    "IPSFA_CFiniquitosNomina": {
+      "id": "npat",
+      "api_name": "IPSFA_CFiniquitosNomina",
+      "parametros": {
+        "fecha_desde": "2025-12-01",
+        "fecha_hasta": "2025-12-31"
+      },
+      "sql_filter": "tipo_movimiento_id = 14 AND monto > 0 AND partida != 6"
+    }
+  },
+"salida": {
+    "destino": "out",
+    "formato": "txt",
+    "nombre_archivo": "patria_{ciclo}.txt",
+    "compresion": true,
+    "nivel_compresion": 3
+  },
+  "reportes": {
+    "conciliacion": true,
+    "indicadores": [
+      "negativos",
+      "sin_cuenta",
+      "invalidos",
+      "duplicados"
+    ]
+  },
+  "reglas": {
+    "cuenta_banco": "0102",
+    "excluir_caducidad": true,
+    "excluir_reverso": true,
+    "monto_minimo": 0.01
+  },
+  "configuracion": {
+    "rif_ipsfa": "J0000000001",
+    "moneda": "VES",
+    "formato_encabezado": "ONTNOM{7}{15}{3}{8}",
+    "formato_detalle": "V{8}{20}{11}{40}"
+  }
+}

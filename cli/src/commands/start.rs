@@ -118,6 +118,7 @@ pub async fn execute(
                         sandra_core::tipos::TipoNomina::Nact => "nact",
                         sandra_core::tipos::TipoNomina::Nrcp => "nrcp",
                         sandra_core::tipos::TipoNomina::Nfcp => "nfcp",
+                        sandra_core::tipos::TipoNomina::Npat => "npat",
                     };
                     let es_nfcp = matches!(tipo, sandra_core::tipos::TipoNomina::Nfcp);
 

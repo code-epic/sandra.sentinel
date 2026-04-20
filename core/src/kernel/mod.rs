@@ -356,6 +356,10 @@ impl Perceptron {
                         // NFCP: se calcula después con lógica especial de familiares
                         beneficiario.neto = 0.0;
                     }
+                    TipoNomina::Npat => {
+                        // NPAT: Nómina Patria - no aplica aquí (usa proceso separado)
+                        beneficiario.neto = 0.0;
+                    }
                 }
             } else {
                 // Si no hay conceptos, inicializar en 0
@@ -370,6 +374,7 @@ impl Perceptron {
                         beneficiario.base.sueldo_integral * pct
                     }
                     TipoNomina::Nfcp => 0.0,
+                    TipoNomina::Npat => 0.0,
                 };
                 beneficiario.porcentaje = 100.0;
             }

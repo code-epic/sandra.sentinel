@@ -13,6 +13,10 @@ pub enum TipoNomina {
 
     #[serde(rename = "nfcp")]
     Nfcp,
+
+    // Nómina Patria
+    #[serde(rename = "npat")]
+    Npat,
 }
 
 impl Default for TipoNomina {
@@ -28,34 +32,43 @@ impl TipoNomina {
             TipoNomina::Nact => "Nómina de Activos",
             TipoNomina::Nrcp => "Nómina de Retirados con Pensión",
             TipoNomina::Nfcp => "Nómina de Fallecidos con Pensión",
+            TipoNomina::Npat => "Nómina Patria - Finiquitos",
         }
     }
 
     pub fn es_titular(&self) -> bool {
         match self {
             TipoNomina::Npr | TipoNomina::Nact | TipoNomina::Nrcp => true,
-            TipoNomina::Nfcp => false,
+            TipoNomina::Nfcp | TipoNomina::Npat => false,
         }
     }
 
     pub fn usa_porcentaje(&self) -> bool {
         match self {
             TipoNomina::Nrcp | TipoNomina::Nfcp => true,
-            TipoNomina::Npr | TipoNomina::Nact => false,
+            TipoNomina::Npr | TipoNomina::Nact | TipoNomina::Npat => false,
         }
     }
 
+    pub fn usa_formato_patria(&self) -> bool {
+        matches!(self, TipoNomina::Npat)
+    }
+
     pub fn nombre_archivo(&self, ciclo: &str) -> String {
-        format!(
-            "nomina_{}_{}.csv",
-            match self {
-                TipoNomina::Npr => "npr",
-                TipoNomina::Nact => "nact",
-                TipoNomina::Nrcp => "nrcp",
-                TipoNomina::Nfcp => "nfcp",
-            },
-            ciclo
-        )
+        match self {
+            TipoNomina::Npat => format!("patria_{}.txt", ciclo),
+            _ => format!(
+                "nomina_{}_{}.csv",
+                match self {
+                    TipoNomina::Npr => "npr",
+                    TipoNomina::Nact => "nact",
+                    TipoNomina::Nrcp => "nrcp",
+                    TipoNomina::Nfcp => "nfcp",
+                    TipoNomina::Npat => "npat",
+                },
+                ciclo
+            ),
+        }
     }
 }
 
@@ -66,6 +79,7 @@ impl std::fmt::Display for TipoNomina {
             TipoNomina::Nact => write!(f, "NACT"),
             TipoNomina::Nrcp => write!(f, "NRCP"),
             TipoNomina::Nfcp => write!(f, "NFCP"),
+            TipoNomina::Npat => write!(f, "NPAT"),
         }
     }
 }

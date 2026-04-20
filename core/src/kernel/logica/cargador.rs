@@ -60,6 +60,21 @@ impl Cargador {
         self.fetch_stream("IPSFA_CMovimientos").await
     }
 
+    /// CARGA DE FINIQUITOS PARA NOMINA PATRIA
+    /// Función: IPSFA_CFiniquitosNomina
+    /// Campos: cedula, apellidos, numero_cuenta, monto, f_contable, observaciones
+    /// Filtros (via sql_filter en manifisto):
+    ///   - tipo_movimiento_id = 14
+    ///   - monto > 0 (montos positivos)
+    ///   - numero_cuenta LIKE '0102%' (cuenta Banco de Venezuela)
+    ///   - partida != 6 (no caducidad)
+    ///   - Rango de fecha: f_contable BETWEEN fecha_desde AND fecha_hasta
+    pub async fn cargar_finiquitos_patria(
+        &mut self,
+    ) -> Result<Vec<FiniquitoPatria>, Box<dyn std::error::Error + Send + Sync>> {
+        self.fetch_stream("IPSFA_CFiniquitosNomina").await
+    }
+
     pub async fn cargar_base(
         &mut self,
         directivas: &Vec<Directiva>,
