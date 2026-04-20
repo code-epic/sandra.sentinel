@@ -17,7 +17,10 @@ pub fn generar_linea_apertura(b: &Beneficiario, porcentaje: f64) -> String {
     campo.nombre = Some(pad_right(&nombre_completo, 60, ' '));
     campo.edocivil = Some("S".to_string());
 
-    let monto_raw = b.base.garantias * porcentaje / 100.0;
+    let m = &b.movimientos;
+    let monto_raw = (m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor)
+        * porcentaje
+        / 100.0;
     campo.monto = monto_raw;
 
     let monto_str = pad_left(&remove_decimal(monto_raw), 13, '0');
@@ -31,13 +34,16 @@ pub fn generar_linea_apertura(b: &Beneficiario, porcentaje: f64) -> String {
         campo.cedula,
         nombre_str,
         edocivil_str,
-        "00000000000000000000000000",
+        "00000000000000000000000",
         monto_str
     )
 }
 
 pub fn generar_linea_aporte(b: &Beneficiario, porcentaje: f64) -> String {
-    let monto_raw = b.base.garantias * porcentaje / 100.0;
+    let m = &b.movimientos;
+    let monto_raw = (m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor)
+        * porcentaje
+        / 100.0;
     let monto_str = pad_left(&remove_decimal(monto_raw), 13, '0');
     let cedula = pad_left(&b.cedula.replace(|c: char| !c.is_ascii_digit(), ""), 9, '0');
 
@@ -63,7 +69,10 @@ pub fn generar_linea_aporte(b: &Beneficiario, porcentaje: f64) -> String {
 }
 
 pub fn generar_linea_retiro(b: &Beneficiario, porcentaje: f64) -> String {
-    let monto_raw = b.base.garantias * porcentaje / 100.0;
+    let m = &b.movimientos;
+    let monto_raw = (m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor)
+        * porcentaje
+        / 100.0;
     let monto_str = pad_left(&remove_decimal(monto_raw), 13, '0');
     let cedula = pad_left(&b.cedula.replace(|c: char| !c.is_ascii_digit(), ""), 9, '0');
 
@@ -124,12 +133,35 @@ pub fn generar_txt_venezuela(
     let mut suma_total = 0.0;
 
     for b in beneficiarios {
+        let m = &b.movimientos;
+        let tiene_mov =
+            m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor > 0.0;
+        let monto_mov = m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor;
+
         let linea = match tipo {
-            TipoArchivo::Apertura => generar_linea_apertura(b, porcentaje),
-            TipoArchivo::Aporte => generar_linea_aporte(b, porcentaje),
-            TipoArchivo::Retiro => generar_linea_retiro(b, porcentaje),
+            TipoArchivo::Apertura => {
+                if !tiene_mov {
+                    generar_linea_apertura(b, porcentaje)
+                } else {
+                    String::new()
+                }
+            }
+            TipoArchivo::Aporte => {
+                if tiene_mov {
+                    generar_linea_aporte(b, porcentaje)
+                } else {
+                    String::new()
+                }
+            }
+            TipoArchivo::Retiro => {
+                if tiene_mov {
+                    generar_linea_retiro(b, porcentaje)
+                } else {
+                    String::new()
+                }
+            }
             TipoArchivo::Mixto => {
-                if b.base.garantias > 0.0 {
+                if tiene_mov {
                     generar_linea_aporte(b, porcentaje)
                 } else {
                     generar_linea_retiro(b, porcentaje)
@@ -137,10 +169,10 @@ pub fn generar_txt_venezuela(
             }
         };
 
-        if b.base.garantias > 0.0 {
+        if !linea.is_empty() {
             writeln!(archivo, "{}", linea)?;
             cantidad += 1;
-            suma_total += b.base.garantias * porcentaje / 100.0;
+            suma_total += monto_mov * porcentaje / 100.0;
         }
     }
 

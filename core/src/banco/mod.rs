@@ -1,8 +1,10 @@
 pub mod banfanb;
 pub mod bicentenario;
+pub mod loki;
 pub mod tipos;
 pub mod venezuela;
 
+pub use loki::GeneradorLoki;
 pub use tipos::{Banco, CampoBanco, TipoArchivo};
 
 pub fn generar_txt_bancario(

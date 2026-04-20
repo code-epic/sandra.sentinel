@@ -31,11 +31,11 @@ jobs:
             target: x86_64-apple-darwin
             artifact_name: sandra-sentinel-x86_64-apple-darwin
             cross: true
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: sandra-sentinel-centos8-x86_64
             cross: false
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: sandra-sentinel-centos9-x86_64
             cross: false
