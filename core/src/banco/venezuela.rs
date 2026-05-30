@@ -18,7 +18,7 @@ pub fn generar_linea_apertura(b: &Beneficiario, porcentaje: f64) -> String {
     campo.edocivil = Some("S".to_string());
 
     let m = &b.movimientos;
-    let monto_raw = (m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor)
+    let monto_raw = (m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo)
         * porcentaje
         / 100.0;
     campo.monto = monto_raw;
@@ -41,7 +41,7 @@ pub fn generar_linea_apertura(b: &Beneficiario, porcentaje: f64) -> String {
 
 pub fn generar_linea_aporte(b: &Beneficiario, porcentaje: f64) -> String {
     let m = &b.movimientos;
-    let monto_raw = (m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor)
+    let monto_raw = (m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo)
         * porcentaje
         / 100.0;
     let monto_str = pad_left(&remove_decimal(monto_raw), 13, '0');
@@ -70,7 +70,7 @@ pub fn generar_linea_aporte(b: &Beneficiario, porcentaje: f64) -> String {
 
 pub fn generar_linea_retiro(b: &Beneficiario, porcentaje: f64) -> String {
     let m = &b.movimientos;
-    let monto_raw = (m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor)
+    let monto_raw = (m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo)
         * porcentaje
         / 100.0;
     let monto_str = pad_left(&remove_decimal(monto_raw), 13, '0');
@@ -135,8 +135,8 @@ pub fn generar_txt_venezuela(
     for b in beneficiarios {
         let m = &b.movimientos;
         let tiene_mov =
-            m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor > 0.0;
-        let monto_mov = m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor;
+            m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo > 0.0;
+        let monto_mov = m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo;
 
         let linea = match tipo {
             TipoArchivo::Apertura => {

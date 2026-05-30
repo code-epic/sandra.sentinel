@@ -347,7 +347,7 @@ impl Cargador {
                                 if let Some(ultimo_mov) = movs_encontrados.last() {
                                     item.movimientos = ultimo_mov.clone();
                                     // Copiar deposito banco al base
-                                    item.base.deposito_banco = ultimo_mov.cap_banco;
+                                    item.base.deposito_banco = ultimo_mov.finiquito_capital_banco;
                                 }
                             }
 

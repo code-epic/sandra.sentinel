@@ -307,7 +307,24 @@ pub struct Base {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Movimiento {
+    // Identificación
     pub cedula: String,
+
+    // Saldos acumulados (provenientes de public.saldos_acumulados)
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub deposito_aa: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub anticipo: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub embargo: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub embargo_ejecutado: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub calculo_aa: f64,
 
     #[serde(
         default,
@@ -315,25 +332,50 @@ pub struct Movimiento {
         alias = "capital_banco",
         alias = "capital"
     )]
-    pub cap_banco: f64,
+    pub finiquito_capital_banco: f64,
 
     #[serde(default, deserialize_with = "deserialize_string_to_f64")]
-    pub anticipo: f64,
+    pub finiquito_ajuste_intereses: f64,
 
-    #[serde(
-        default,
-        deserialize_with = "deserialize_string_to_f64",
-        alias = "fecha_capital_banco",
-        alias = "f_cap_banco"
-    )]
-    pub fcap_banco: f64,
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub finiquito_asignacion_cm: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub finiquito_asignacion_mas: f64,
 
     #[serde(
         default,
         deserialize_with = "deserialize_string_to_f64",
         alias = "diferencia_asignacion_anticipo"
     )]
-    pub dif_asi_anti: f64,
+    pub finiquito_diferencia_aa: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub finiquito_ajuste_deuda: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub finiquito_recuperacion: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_finiquito_capital_banco: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_finiquito_ajuste_intereses: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_finiquito_asignacion_cm: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_finiquito_asignacion_mas: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_finiquito_diferencia_aa: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_finiquito_ajuste_deuda: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_finiquito_recuperacion: f64,
 
     #[serde(
         default,
@@ -341,22 +383,47 @@ pub struct Movimiento {
         alias = "anticipo_retroactivo",
         alias = "retroactivo"
     )]
-    pub anticipor: f64,
+    pub reverso_orden_pago_anticipo: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_orden_pago_generica: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub embargo_aa_ejecutado: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub comision_servicio: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub calculo_de_dias_adicionales: f64,
 
     #[serde(
         default,
         deserialize_with = "deserialize_string_to_f64",
         alias = "deposito_adicional"
     )]
-    pub dep_adicional: f64,
+    pub deposito_de_dias_adicionales: f64,
 
     #[serde(
         default,
         deserialize_with = "deserialize_string_to_f64",
         alias = "deposito_garantia"
     )]
-    pub dep_garantia: f64,
+    pub deposito_de_garantias: f64,
 
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub calculo_de_garantias: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub reverso_embargo_aa_ejecutado: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub monto_recuperado_activo: f64,
+
+    #[serde(default, deserialize_with = "deserialize_string_to_f64")]
+    pub movimiento_inactivo_aa: f64,
+
+    // Metadatos
     #[serde(default, alias = "f_ult_modificacion", alias = "updated_at")]
     pub ultima_modificacion: Option<String>,
 }
@@ -365,13 +432,36 @@ impl Default for Movimiento {
     fn default() -> Self {
         Movimiento {
             cedula: String::new(),
-            cap_banco: 0.0,
+            deposito_aa: 0.0,
             anticipo: 0.0,
-            fcap_banco: 0.0,
-            dif_asi_anti: 0.0,
-            anticipor: 0.0,
-            dep_adicional: 0.0,
-            dep_garantia: 0.0,
+            embargo: 0.0,
+            embargo_ejecutado: 0.0,
+            calculo_aa: 0.0,
+            finiquito_capital_banco: 0.0,
+            finiquito_ajuste_intereses: 0.0,
+            finiquito_asignacion_cm: 0.0,
+            finiquito_asignacion_mas: 0.0,
+            finiquito_diferencia_aa: 0.0,
+            finiquito_ajuste_deuda: 0.0,
+            finiquito_recuperacion: 0.0,
+            reverso_finiquito_capital_banco: 0.0,
+            reverso_finiquito_ajuste_intereses: 0.0,
+            reverso_finiquito_asignacion_cm: 0.0,
+            reverso_finiquito_asignacion_mas: 0.0,
+            reverso_finiquito_diferencia_aa: 0.0,
+            reverso_finiquito_ajuste_deuda: 0.0,
+            reverso_finiquito_recuperacion: 0.0,
+            reverso_orden_pago_anticipo: 0.0,
+            reverso_orden_pago_generica: 0.0,
+            embargo_aa_ejecutado: 0.0,
+            comision_servicio: 0.0,
+            calculo_de_dias_adicionales: 0.0,
+            deposito_de_dias_adicionales: 0.0,
+            deposito_de_garantias: 0.0,
+            calculo_de_garantias: 0.0,
+            reverso_embargo_aa_ejecutado: 0.0,
+            monto_recuperado_activo: 0.0,
+            movimiento_inactivo_aa: 0.0,
             ultima_modificacion: None,
         }
     }

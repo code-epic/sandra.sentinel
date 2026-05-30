@@ -130,13 +130,36 @@ pub fn exportar_nomina_csv(
         "dias_adicionales",
         "deposito_banco",
         "no_depositado_banco",
-        "cap_banco",
+        "deposito_aa",
         "anticipo",
-        "f_cap_banco",
-        "dif_asi_anti",
-        "anticipo_retroactivo",
-        "dep_adicional",
-        "dep_garantia",
+        "embargo",
+        "embargo_ejecutado",
+        "calculo_aa",
+        "finiquito_capital_banco",
+        "finiquito_ajuste_intereses",
+        "finiquito_asignacion_cm",
+        "finiquito_asignacion_mas",
+        "finiquito_diferencia_aa",
+        "finiquito_ajuste_deuda",
+        "finiquito_recuperacion",
+        "reverso_finiquito_capital_banco",
+        "reverso_finiquito_ajuste_intereses",
+        "reverso_finiquito_asignacion_cm",
+        "reverso_finiquito_asignacion_mas",
+        "reverso_finiquito_diferencia_aa",
+        "reverso_finiquito_ajuste_deuda",
+        "reverso_finiquito_recuperacion",
+        "reverso_orden_pago_anticipo",
+        "reverso_orden_pago_generica",
+        "embargo_aa_ejecutado",
+        "comision_servicio",
+        "calculo_de_dias_adicionales",
+        "deposito_de_dias_adicionales",
+        "deposito_de_garantias",
+        "calculo_de_garantias",
+        "reverso_embargo_aa_ejecutado",
+        "monto_recuperado_activo",
+        "movimiento_inactivo_aa",
         "patterns",
     ])?;
 
@@ -195,13 +218,36 @@ pub fn exportar_nomina_csv(
             &format!("{:.2}", b.base.dias_adicionales),
             &format!("{:.2}", b.base.deposito_banco),
             &format!("{:.2}", b.base.no_depositado_banco),
-            &format!("{:.2}", b.movimientos.cap_banco),
+            &format!("{:.2}", b.movimientos.deposito_aa),
             &format!("{:.2}", b.movimientos.anticipo),
-            &format!("{:.2}", b.movimientos.fcap_banco),
-            &format!("{:.2}", b.movimientos.dif_asi_anti),
-            &format!("{:.2}", b.movimientos.anticipor),
-            &format!("{:.2}", b.movimientos.dep_adicional),
-            &format!("{:.2}", b.movimientos.dep_garantia),
+            &format!("{:.2}", b.movimientos.embargo),
+            &format!("{:.2}", b.movimientos.embargo_ejecutado),
+            &format!("{:.2}", b.movimientos.calculo_aa),
+            &format!("{:.2}", b.movimientos.finiquito_capital_banco),
+            &format!("{:.2}", b.movimientos.finiquito_ajuste_intereses),
+            &format!("{:.2}", b.movimientos.finiquito_asignacion_cm),
+            &format!("{:.2}", b.movimientos.finiquito_asignacion_mas),
+            &format!("{:.2}", b.movimientos.finiquito_diferencia_aa),
+            &format!("{:.2}", b.movimientos.finiquito_ajuste_deuda),
+            &format!("{:.2}", b.movimientos.finiquito_recuperacion),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_capital_banco),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_intereses),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_cm),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_mas),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_diferencia_aa),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_deuda),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_recuperacion),
+            &format!("{:.2}", b.movimientos.reverso_orden_pago_anticipo),
+            &format!("{:.2}", b.movimientos.reverso_orden_pago_generica),
+            &format!("{:.2}", b.movimientos.embargo_aa_ejecutado),
+            &format!("{:.2}", b.movimientos.comision_servicio),
+            &format!("{:.2}", b.movimientos.calculo_de_dias_adicionales),
+            &format!("{:.2}", b.movimientos.deposito_de_dias_adicionales),
+            &format!("{:.2}", b.movimientos.deposito_de_garantias),
+            &format!("{:.2}", b.movimientos.calculo_de_garantias),
+            &format!("{:.2}", b.movimientos.reverso_embargo_aa_ejecutado),
+            &format!("{:.2}", b.movimientos.monto_recuperado_activo),
+            &format!("{:.2}", b.movimientos.movimiento_inactivo_aa),
             &b.patterns,
         ])?;
     }
@@ -417,7 +463,7 @@ pub fn exportar_aporte_y_apertura_txt(
 
     for b in beneficiaries {
         let m = &b.movimientos;
-        let total_mov = m.cap_banco + m.anticipo + m.dep_adicional + m.dep_garantia + m.anticipor;
+        let total_mov = m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo;
         if total_mov > 0.0 {
             aporte.push(b.clone());
         } else {
@@ -945,13 +991,36 @@ fn generar_headers_nomina(
         headers.push("dias_adicionales".to_string());
         headers.push("deposito_banco".to_string());
         headers.push("no_depositado_banco".to_string());
-        headers.push("cap_banco".to_string());
+        headers.push("deposito_aa".to_string());
         headers.push("anticipo".to_string());
-        headers.push("f_cap_banco".to_string());
-        headers.push("dif_asi_anti".to_string());
-        headers.push("anticipo_retroactivo".to_string());
-        headers.push("dep_adicional".to_string());
-        headers.push("dep_garantia".to_string());
+        headers.push("embargo".to_string());
+        headers.push("embargo_ejecutado".to_string());
+        headers.push("calculo_aa".to_string());
+        headers.push("finiquito_capital_banco".to_string());
+        headers.push("finiquito_ajuste_intereses".to_string());
+        headers.push("finiquito_asignacion_cm".to_string());
+        headers.push("finiquito_asignacion_mas".to_string());
+        headers.push("finiquito_diferencia_aa".to_string());
+        headers.push("finiquito_ajuste_deuda".to_string());
+        headers.push("finiquito_recuperacion".to_string());
+        headers.push("reverso_finiquito_capital_banco".to_string());
+        headers.push("reverso_finiquito_ajuste_intereses".to_string());
+        headers.push("reverso_finiquito_asignacion_cm".to_string());
+        headers.push("reverso_finiquito_asignacion_mas".to_string());
+        headers.push("reverso_finiquito_diferencia_aa".to_string());
+        headers.push("reverso_finiquito_ajuste_deuda".to_string());
+        headers.push("reverso_finiquito_recuperacion".to_string());
+        headers.push("reverso_orden_pago_anticipo".to_string());
+        headers.push("reverso_orden_pago_generica".to_string());
+        headers.push("embargo_aa_ejecutado".to_string());
+        headers.push("comision_servicio".to_string());
+        headers.push("calculo_de_dias_adicionales".to_string());
+        headers.push("deposito_de_dias_adicionales".to_string());
+        headers.push("deposito_de_garantias".to_string());
+        headers.push("calculo_de_garantias".to_string());
+        headers.push("reverso_embargo_aa_ejecutado".to_string());
+        headers.push("monto_recuperado_activo".to_string());
+        headers.push("movimiento_inactivo_aa".to_string());
     }
 
     headers.push("patterns".to_string());
@@ -1060,13 +1129,36 @@ fn generar_registro_nomina(
         record.push(format!("{:.2}", b.base.dias_adicionales));
         record.push(format!("{:.2}", b.base.deposito_banco));
         record.push(format!("{:.2}", b.base.no_depositado_banco));
-        record.push(format!("{:.2}", b.movimientos.cap_banco));
+        record.push(format!("{:.2}", b.movimientos.deposito_aa));
         record.push(format!("{:.2}", b.movimientos.anticipo));
-        record.push(format!("{:.2}", b.movimientos.fcap_banco));
-        record.push(format!("{:.2}", b.movimientos.dif_asi_anti));
-        record.push(format!("{:.2}", b.movimientos.anticipor));
-        record.push(format!("{:.2}", b.movimientos.dep_adicional));
-        record.push(format!("{:.2}", b.movimientos.dep_garantia));
+        record.push(format!("{:.2}", b.movimientos.embargo));
+        record.push(format!("{:.2}", b.movimientos.embargo_ejecutado));
+        record.push(format!("{:.2}", b.movimientos.calculo_aa));
+        record.push(format!("{:.2}", b.movimientos.finiquito_capital_banco));
+        record.push(format!("{:.2}", b.movimientos.finiquito_ajuste_intereses));
+        record.push(format!("{:.2}", b.movimientos.finiquito_asignacion_cm));
+        record.push(format!("{:.2}", b.movimientos.finiquito_asignacion_mas));
+        record.push(format!("{:.2}", b.movimientos.finiquito_diferencia_aa));
+        record.push(format!("{:.2}", b.movimientos.finiquito_ajuste_deuda));
+        record.push(format!("{:.2}", b.movimientos.finiquito_recuperacion));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_capital_banco));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_intereses));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_cm));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_mas));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_diferencia_aa));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_deuda));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_recuperacion));
+        record.push(format!("{:.2}", b.movimientos.reverso_orden_pago_anticipo));
+        record.push(format!("{:.2}", b.movimientos.reverso_orden_pago_generica));
+        record.push(format!("{:.2}", b.movimientos.embargo_aa_ejecutado));
+        record.push(format!("{:.2}", b.movimientos.comision_servicio));
+        record.push(format!("{:.2}", b.movimientos.calculo_de_dias_adicionales));
+        record.push(format!("{:.2}", b.movimientos.deposito_de_dias_adicionales));
+        record.push(format!("{:.2}", b.movimientos.deposito_de_garantias));
+        record.push(format!("{:.2}", b.movimientos.calculo_de_garantias));
+        record.push(format!("{:.2}", b.movimientos.reverso_embargo_aa_ejecutado));
+        record.push(format!("{:.2}", b.movimientos.monto_recuperado_activo));
+        record.push(format!("{:.2}", b.movimientos.movimiento_inactivo_aa));
     }
 
     record.push(b.patterns.clone());
@@ -1162,13 +1254,36 @@ fn es_campo_fijo(campo: &str) -> bool {
             | "dias_adicionales"
             | "deposito_banco"
             | "no_depositado_banco"
-            | "cap_banco"
+            | "deposito_aa"
             | "anticipo"
-            | "f_cap_banco"
-            | "dif_asi_anti"
-            | "anticipo_retroactivo"
-            | "dep_adicional"
-            | "dep_garantia"
+            | "embargo"
+            | "embargo_ejecutado"
+            | "calculo_aa"
+            | "finiquito_capital_banco"
+            | "finiquito_ajuste_intereses"
+            | "finiquito_asignacion_cm"
+            | "finiquito_asignacion_mas"
+            | "finiquito_diferencia_aa"
+            | "finiquito_ajuste_deuda"
+            | "finiquito_recuperacion"
+            | "reverso_finiquito_capital_banco"
+            | "reverso_finiquito_ajuste_intereses"
+            | "reverso_finiquito_asignacion_cm"
+            | "reverso_finiquito_asignacion_mas"
+            | "reverso_finiquito_diferencia_aa"
+            | "reverso_finiquito_ajuste_deuda"
+            | "reverso_finiquito_recuperacion"
+            | "reverso_orden_pago_anticipo"
+            | "reverso_orden_pago_generica"
+            | "embargo_aa_ejecutado"
+            | "comision_servicio"
+            | "calculo_de_dias_adicionales"
+            | "deposito_de_dias_adicionales"
+            | "deposito_de_garantias"
+            | "calculo_de_garantias"
+            | "reverso_embargo_aa_ejecutado"
+            | "monto_recuperado_activo"
+            | "movimiento_inactivo_aa"
             | "patterns"
             | "porcentaje"
             | "sueldo_neto_porcentaje"
