@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
-use scf::{parse_args, Comparator, ReportGenerator};
+use sandra_conciliate::{parse_args, Comparator, ReportGenerator};
 
 fn main() {
     if let Err(e) = run() {
@@ -12,7 +12,7 @@ fn main() {
     }
 }
 
-fn run() -> scf::Result<()> {
+fn run() -> sandra_conciliate::Result<()> {
     let args = parse_args();
     let start_time = Instant::now();
 
@@ -23,7 +23,7 @@ fn run() -> scf::Result<()> {
         println!("Output: {}/\n", args.output_dir);
     }
 
-    scf::io::create_output_dir(&args.output_dir)?;
+    sandra_conciliate::io::create_output_dir(&args.output_dir)?;
 
     let mut comparator = Comparator::new(
         args.comparison_columns.clone(),
@@ -51,7 +51,7 @@ fn run() -> scf::Result<()> {
     let mut hallazgos_writer = BufWriter::new(hallazgos_file);
     let mut log_writer = BufWriter::new(log_file);
 
-    let reader = scf::io::FileReader::new(args.delimiter, args.skip_header);
+    let reader = sandra_conciliate::io::FileReader::new(args.delimiter, args.skip_header);
     let origin_lines = reader.read_all(&args.origin_file)?;
     let total_lines = origin_lines.len();
 
@@ -71,7 +71,7 @@ fn run() -> scf::Result<()> {
 
     let chunks: Vec<Vec<&str>> = lines_ref.chunks(1000).map(|c| c.to_vec()).collect();
 
-    let results: Vec<(&str, scf::ComparisonResult)> = chunks
+    let results: Vec<(&str, sandra_conciliate::ComparisonResult)> = chunks
         .par_iter()
         .flat_map(|chunk| comparator.compare_lines(chunk))
         .collect();
@@ -81,11 +81,11 @@ fn run() -> scf::Result<()> {
 
     for (line, result) in results {
         match result {
-            scf::ComparisonResult::Match => {
+            sandra_conciliate::ComparisonResult::Match => {
                 writeln!(compare_writer, "{}", line)?;
                 match_count += 1;
             }
-            scf::ComparisonResult::NoMatch => {
+            sandra_conciliate::ComparisonResult::NoMatch => {
                 writeln!(hallazgos_writer, "{}", line)?;
                 no_match_count += 1;
             }

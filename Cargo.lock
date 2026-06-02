@@ -1666,6 +1666,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sandra-conciliate"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "indicatif",
+ "rayon",
+ "tempfile",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "sandra_core"
 version = "0.1.0"
 dependencies = [
@@ -1697,24 +1708,13 @@ dependencies = [
  "chrono",
  "clap",
  "reconciler",
+ "sandra-conciliate",
  "sandra_core",
- "scf",
  "serde",
  "serde_json",
  "sha2",
  "tokio",
  "zstd",
-]
-
-[[package]]
-name = "scf"
-version = "1.0.0"
-dependencies = [
- "clap",
- "indicatif",
- "rayon",
- "tempfile",
- "thiserror 1.0.69",
 ]
 
 [[package]]

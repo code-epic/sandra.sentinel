@@ -2,7 +2,7 @@
 members = [
     "core",
     "cli",
-    "core/src/scf",
+    "core/src/sandra-conciliate",
     "reconciler",
 ]
 resolver = "2"

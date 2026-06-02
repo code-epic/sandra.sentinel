@@ -1,8 +1,8 @@
 [package]
-name = "scf"
+name = "sandra-conciliate"
 version = "1.0.0"
 edition = "2021"
-description = "Sandra Conciliation File - Comparador de archivos CSV"
+description = "Sandra Conciliate - Comparador de archivos CSV"
 authors = ["Carlos Peña"]
 license = "MIT"
 
@@ -16,9 +16,9 @@ indicatif = "0.18"
 tempfile = "3.8"
 
 [[bin]]
-name = "scf"
+name = "sandra-conciliate"
 path = "src/main.rs"
 
 [lib]
-name = "scf"
+name = "sandra_conciliate"
 path = "src/lib.rs"

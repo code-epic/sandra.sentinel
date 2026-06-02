@@ -1,6 +1,6 @@
 use std::io::{BufWriter, Write};
 use std::time::Instant;
-use scf::{Comparator, ComparisonResult, ReportGenerator};
+use sandra_conciliate::{Comparator, ComparisonResult, ReportGenerator};
 
 pub async fn execute(
     comparison: String,
@@ -15,7 +15,7 @@ pub async fn execute(
     let start = Instant::now();
 
     if !quiet {
-        println!("SCF - Sandra Conciliation File v1.0.0");
+        println!("Sandra Conciliate v1.0.0");
         println!("========================================");
     }
 
@@ -49,10 +49,10 @@ pub async fn execute(
     }
 
     // Crear directorio de salida
-    scf::io::create_output_dir(&output)?;
+    sandra_conciliate::io::create_output_dir(&output)?;
 
     // Procesar archivo origen
-    let reader = scf::io::FileReader::new(delim, skip_header);
+    let reader = sandra_conciliate::io::FileReader::new(delim, skip_header);
     let lines = reader.read_all(&origin)?;
     let total = lines.len();
 

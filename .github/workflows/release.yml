@@ -71,6 +71,22 @@ jobs:
             artifact: sandra-reconciliate-x86_64-linux-gnu
             cross: false
 
+          # sandra-conciliate (Batch Diff Engine — ex scf)
+          - product: sandra-conciliate
+            package: sandra-conciliate
+            bin: sandra-conciliate
+            os: macos-14
+            target: aarch64-apple-darwin
+            artifact: sandra-conciliate-aarch64-apple-darwin
+            cross: false
+          - product: sandra-conciliate
+            package: sandra-conciliate
+            bin: sandra-conciliate
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: sandra-conciliate-x86_64-linux-gnu
+            cross: false
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -159,11 +175,12 @@ jobs:
         with:
           name: "Sandra Sentinel v${{ needs.extract-version.outputs.version }}"
           body: |
-            ## Sandra Sentinel v${{ needs.extract-version.outputs.version }}
+            ## Sandra Sentinel Ecosystem v${{ needs.extract-version.outputs.version }}
 
             ### Binarios incluidos
             - `sandra-sentinel` — Core de nómina, conciliación bancaria y patria (LOFANB)
             - `sandra-reconciler` — Motor de conciliación streaming CSV vs gRPC
+            - `sandra-conciliate` — Comparador batch de archivos CSV (ex scf)
 
             ### Subcomandos de sandra-sentinel
             - `sandra start` — Ciclo de carga y cálculo de nómina
