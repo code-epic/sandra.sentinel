@@ -1,0 +1,48 @@
+{
+  "nombre": "Nómina Enero 2026 - Oficial",
+  "ciclo": "2026-01",
+  "descripcion": "Ejecución final con ajustes de decreto.",
+  "autor": "Admin. Sistemas",
+  "fecha": "2026-01-31 08:00:00",
+  "version": "1.0.0",
+  "salida": {
+    "destino": "./nm",
+    "compresion": true,
+    "nivel_compresion": 3,
+    "format_txt": "aporte",
+    "bancos": [
+      "0102"
+    ]
+  },
+  "aportes": {
+    "habilitar": true,
+    "monto_aprobado_garantias": 40000000.00,
+		"generar_apertura_con_aporte": true
+  },
+  "cargas": {
+    "IPSFA_CPrimasFunciones": {
+      "api_name": "IPSFA_CPrimasFunciones",
+      "sql_filter": "f.oidd = 81"
+    },
+    "IPSFA_CDirectiva": {
+      "api_name": "IPSFA_CDirectiva",
+      "sql_filter": "dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0"
+    },
+    "IPSFA_CConceptos": {
+      "api_name": "IPSFA_CConceptos",
+      "sql_filter": "directiva_sueldo_id = 81"
+    },
+    "IPSFA_CBase": {
+      "api_name": "IPSFA_CBase",
+      "sql_filter": "status_id = 201"
+    },
+    "IPSFA_CBeneficiarios": {
+      "api_name": "IPSFA_CBeneficiarios",
+      "sql_filter": "bnf.status_id = 201"
+    },
+    "IPSFA_CMovimientos": {
+      "api_name": "IPSFA_CMovimientos",
+      "sql_filter": ""
+    }
+  }
+}

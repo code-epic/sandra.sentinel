@@ -3,6 +3,7 @@ members = [
     "core",
     "cli",
     "core/src/scf",
+    "reconciler",
 ]
 resolver = "2"
 

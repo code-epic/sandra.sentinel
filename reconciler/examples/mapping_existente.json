@@ -1,0 +1,50 @@
+[
+  {
+    "field_name": "grado",
+    "csv_column": "grado",
+    "grpc_path": ["grado_id"],
+    "strategy": { "type": "Exact" }
+  },
+  {
+    "field_name": "n_hijos",
+    "csv_column": "n_hijos",
+    "grpc_path": ["n_hijos"],
+    "strategy": { "type": "Numeric", "epsilon": 0.0 }
+  },
+  {
+    "field_name": "f_ingreso",
+    "csv_column": "f_ingreso",
+    "grpc_path": ["f_ingreso"],
+    "strategy": { "type": "Date" }
+  },
+  {
+    "field_name": "f_ult_ascenso",
+    "csv_column": "f_ult_ascenso",
+    "grpc_path": ["f_ult_ascenso"],
+    "strategy": { "type": "Date" }
+  },
+  {
+    "field_name": "st_profesion",
+    "csv_column": "st_profesion",
+    "grpc_path": ["st_profesion"],
+    "strategy": { "type": "Exact" }
+  },
+  {
+    "field_name": "anio_reconocido",
+    "csv_column": "anio_reconocido",
+    "grpc_path": ["anio_reconocido"],
+    "strategy": { "type": "Numeric", "epsilon": 0.0 }
+  },
+  {
+    "field_name": "mes_reconocido",
+    "csv_column": "mes_reconocido",
+    "grpc_path": ["mes_reconocido"],
+    "strategy": { "type": "Numeric", "epsilon": 0.0 }
+  },
+  {
+    "field_name": "dia_reconocido",
+    "csv_column": "dia_reconocido",
+    "grpc_path": ["dia_reconocido"],
+    "strategy": { "type": "Numeric", "epsilon": 0.0 }
+  }
+]

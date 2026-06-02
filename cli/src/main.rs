@@ -169,6 +169,53 @@ enum Commands {
         archivo: Option<String>,
     },
 
+    /// Conciliación de alta velocidad: CSV vs streaming gRPC.
+    #[command(
+        name = "reconcile-stream",
+        long_about = "Concilia un archivo CSV contra un stream gRPC de beneficiarios en tiempo real.\n\nEjemplo:\n  sandra reconcile-stream --csv-path nomina.csv --grpc-url http://localhost:50051 --field-mapping mapping.json\n"
+    )]
+    ReconcileStream {
+        /// Ruta al archivo CSV de entrada.
+        #[arg(long)]
+        csv_path: String,
+
+        /// URL del endpoint gRPC.
+        #[arg(long, default_value = "http://localhost:50051")]
+        grpc_url: String,
+
+        /// Nombre de la función dinámica gRPC.
+        #[arg(long, default_value = "IPSFA_CBeneficiarios")]
+        grpc_function: String,
+
+        /// Parámetros SQL/filtro gRPC.
+        #[arg(long, default_value = "\"%\"")]
+        grpc_parametros: String,
+
+        /// Tamaño de chunk.
+        #[arg(long, default_value_t = 10000)]
+        chunk_size: usize,
+
+        /// Directorio de salida.
+        #[arg(long, default_value = "./reconcile-out")]
+        output_dir: String,
+
+        /// Delimitador CSV.
+        #[arg(long, default_value = ";")]
+        delimiter: String,
+
+        /// Omitir header.
+        #[arg(long)]
+        skip_header: bool,
+
+        /// Archivo JSON con mapeo de campos.
+        #[arg(long)]
+        field_mapping: Option<String>,
+
+        /// Modo silencioso.
+        #[arg(short, long)]
+        quiet: bool,
+    },
+
     /// Valida claves de acceso y permisos de seguridad (Herramienta admin).
     Validar {
         /// Clave o Token a validar.
@@ -218,6 +265,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Conciliacion { archivo }) => {
             commands::conciliacion::execute(archivo.clone()).await;
+        }
+        Some(Commands::ReconcileStream {
+            csv_path,
+            grpc_url,
+            grpc_function,
+            grpc_parametros,
+            chunk_size,
+            output_dir,
+            delimiter,
+            skip_header,
+            field_mapping,
+            quiet,
+        }) => {
+            commands::reconcile_stream::execute(
+                csv_path.clone(),
+                grpc_url.clone(),
+                grpc_function.clone(),
+                grpc_parametros.clone(),
+                *chunk_size,
+                output_dir.clone(),
+                delimiter.clone(),
+                *skip_header,
+                field_mapping.clone(),
+                *quiet,
+            ).await?;
         }
         Some(Commands::Validar { clave }) => {
             commands::validar::execute(clave.clone());
