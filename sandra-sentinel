@@ -3,7 +3,7 @@
 # SANDRA SENTINEL - Compilador Unificado del Workspace Rust
 # Autor: Odin / Sandra Fábrica de Software
 # Descripción: Compila, testea y empaqueta todo el workspace Sentinel
-#              (core, scf, reconciler, cli) en un solo punto de entrada.
+#              (core, sandra-conciliate, reconciler, cli) en un solo punto de entrada.
 # Uso: ./sandra-sentinel [comando] [opciones]
 #======================================================================
 
@@ -47,7 +47,7 @@ INSTALL=false
 DIST_DIR="dist"
 
 # Bins del workspace
-BINS=("sandra-sentinel" "sandra-reconciler")
+BINS=("sandra-sentinel" "sandra-reconciler" "sandra-conciliate")
 
 #---------------------------------------------------------------------
 # UTILIDADES DE LOG
