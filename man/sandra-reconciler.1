@@ -1,0 +1,173 @@
+.TH SANDRA-RECONCILER 1 "2026-06-02" "Sandra Reconciler 1.0.0" "Sandra Ecosystem Manual"
+.SH NAME
+sandra-reconciler \- Conciliaci\['o]n streaming de alta velocidad: CSV vs. gRPC
+.SH SYNOPSIS
+.B sandra-reconciler
+.RB [ \-\-csv-path
+.IR FILE ]
+.RB [ \-\-field-mapping
+.IR FILE ]
+.RB [ \-\-grpc-url
+.IR URL ]
+.RB [ \-\-grpc-function
+.IR NAME ]
+.RB [ \-\-grpc-parametros
+.IR VAL ]
+.RB [ \-\-delimiter
+.IR CHAR ]
+.RB [ \-\-output-dir
+.IR DIR ]
+.RB [ \-\-skip-header ]
+.RB [ \-\-debug ]
+.RB [ \-\-quiet ]
+.SH DESCRIPTION
+.B sandra-reconciler
+es el motor de conciliaci\['o]n streaming del ecosistema Sandra. Compara un
+archivo CSV local contra un flujo gRPC de registros de beneficiarios,
+generando salidas diferenciadas para auditor\['i]a y aplicaci\['o]n de
+actualizaciones masivas en PostgreSQL.
+
+El pipeline opera en seis fases:
+.PP
+1. \fBCarga CSV\fR: indexaci\['o]n en memoria v\['i]a memmap2 + HashMap por c\['e]dula.
+.PP
+2. \fBConexi\['o]n gRPC\fR: establece canal con SentinelDynamicService.
+.PP
+3. \fBConsumo de stream\fR: descarga batches NDJSON en paralelo (tokio::spawn).
+.PP
+4. \fBFusi\['o]n/Comparaci\['o]n\fR: comparaci\['o]n campo-a-campo con estrategias
+(Eexact, Numeric, Date, Cedula).
+.PP
+5. \fBHu\['e]rfanos CSV\fR: registros no encontrados en el stream (nuevos beneficiarios).
+.PP
+6. \fBReporte\fR: m\['e]tricas, archivos de salida y scripts SQL.
+
+Si no se provee
+.B \-\-field-mapping
+, el reconciler detecta autom\['a]ticamente los campos
+comunes entre el CSV y el primer batch gRPC, infiriendo estrategias de
+comparaci\['o]n por nombre de campo.
+.SH OPTIONS
+.TP
+.B \-\-csv-path " " \fIFILE\fR
+Ruta al archivo CSV de entrada (obligatorio).
+.TP
+.B \-\-field-mapping " " \fIFILE\fR
+Ruta al archivo JSON con definici\['o]n expl\['i]cita de mapeo de campos.
+Si se omite, se detecta autom\['a]ticamente desde el stream gRPC.
+.TP
+.B \-\-grpc-url " " \fIURL\fR
+URL del endpoint gRPC. Por defecto:
+.BR http://localhost:50051 .
+.TP
+.B \-\-grpc-function " " \fINAME\fR
+Nombre de la funci\['o]n din\['a]mica gRPC a invocar. Por defecto:
+.BR IPSFA_CBeneficiarios .
+.TP
+.B \-\-grpc-parametros " " \fIVAL\fR
+Par\['a]metros de la funci\['o]n (filtro SQL). Por defecto:
+.BR \"%\" .
+.TP
+.B \-\-delimiter " " \fICHAR\fR
+Delimitador del CSV. Por defecto:
+.BR ";" .
+.TP
+.B \-\-output-dir " " \fIDIR\fR
+Directorio donde se escriben los archivos de salida. Por defecto:
+.BR ./reconcile-out .
+.TP
+.B \-\-skip-header
+Indica que la primera fila del CSV es un header y debe omitirse.
+.TP
+.B \-\-debug
+Activa modo diagn\['o]stico: imprime nombres de campos gRPC detectados,
+muestras de comparaci\['o]n campo-a-campo y guarda muestras JSON en
+.IR ./debug/ .
+.TP
+.B \-\-quiet
+Suprime toda salida de progreso. \['U]nico output: logs de error.
+.SH OUTPUT FILES
+.TP
+.I correctos.csv
+Registros con coincidencia 100% (mismo formato que el CSV de entrada).
+.TP
+.I rechazos.csv
+Registros con diferencias parciales. Incluye todos los campos del mapping.
+.TP
+.I nuevos.csv
+Registros del CSV no encontrados en gRPC (nuevos beneficiarios).
+.TP
+.I pendientes.csv
+Registros gRPC no existentes en CSV (cedula, nombre, apellidos, sexo,
+m\['a]s campos del mapping).
+.TP
+.I errores.jsonl
+Diferencias detalladas campo a campo (valor CSV vs. valor gRPC).
+.TP
+.I detalle.txt
+Descripci\['o]n legible de diferencias por c\['e]dula, clasificadas por tipo:
+[GRADO], [N_HIJOS], [FECHAS], [RECONOCIMIENTO], [PROFESION].
+.TP
+.I postgres_batch.sql
+Batch UPDATE PostgreSQL con todos los campos de los registros con diferencias.
+.TP
+.I insert_batch.sql
+Batch INSERT PostgreSQL para los registros nuevos (no existen en gRPC).
+.TP
+.I reporte.txt
+M\['e]tricas finales: hits, diferencias, hu\['e]rfanos, hit rate, archivos generados.
+.SH EXIT STATUS
+.TP
+.B 0
+Conciliaci\['o]n completada exitosamente.
+.TP
+.B 1
+Error de I/O, gRPC no disponible, o parsing fallido.
+.TP
+.B 2
+Error de validaci\['o]n de argumentos o mapping JSON malformado.
+.SH ENVIRONMENT
+.TP
+.B SENTINEL_VERSION
+Versi\['o]n inyectada en tiempo de compilaci\['o]n.
+.TP
+.B SENTINEL_COMMIT
+Hash del commit Git.
+.TP
+.B SENTINEL_BUILD_DATE
+Fecha de compilaci\['o]n ISO-8601.
+.SH EXAMPLES
+.PP
+Ejecuci\['o]n con mapeo autom\['a]tico (sin mapping JSON):
+.RS
+.nf
+$ sandra-reconciler \\
+    --csv-path nomina.csv \\
+    --delimiter "," \\
+    --skip-header \\
+    --grpc-url http://localhost:50051 \\
+    --grpc-function IPSFA_CBeneficiariosConciliate \\
+    --output-dir ./out
+.fi
+.RE
+.PP
+Ejecuci\['o]n con mapping expl\['i]cito:
+.RS
+.nf
+$ sandra-reconciler \\
+    --csv-path nomina.csv \\
+    --field-mapping mapping_existente.json \\
+    --grpc-url http://localhost:50051 \\
+    --output-dir ./out \\
+    --debug
+.fi
+.RE
+.SH SEE ALSO
+.BR sandra-sentinel (1),
+.BR sandra-conciliate (1),
+.BR resumen-procesos.toml (5)
+.SH AUTHORS
+Desarrollado por el Equipo de Ingenier\['i]a Sandra / F\['a]brica de Software.
+.SH COPYRIGHT
+Copyright \(co 2024-2026 Code-Epic Technologies. Licenciado bajo t\['e]rminos
+internos de custodia digital LOFANB.

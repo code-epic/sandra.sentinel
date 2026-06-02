@@ -1,0 +1,137 @@
+.TH SANDRA-CONCILIATE 1 "2026-06-02" "Sandra Conciliate 1.0.0" "Sandra Ecosystem Manual"
+.SH NAME
+sandra-conciliate \- Comparador batch de archivos CSV (Sandra Conciliation File)
+.SH SYNOPSIS
+.B sandra-conciliate
+.RB [ \-\-comparison " " \fIFILE\fR ]
+.RB [ \-\-comparison-columns " " \fICOLS\fR ]
+.RB [ \-\-origin " " \fIFILE\fR ]
+.RB [ \-\-origin-columns " " \fICOLS\fR ]
+.RB [ \-\-delimiter " " \fICHAR\fR ]
+.RB [ \-\-output " " \fIDIR\fR ]
+.RB [ \-\-skip-header ]
+.RB [ \-\-quiet ]
+
+.B sandra conciliate
+.RB [ \-\-comparison " " \fIFILE\fR ]
+.RB [ \-\-comparison-columns " " \fICOLS\fR ]
+.RB [ \-\-origin " " \fIFILE\fR ]
+.RB [ \-\-origin-columns " " \fICOLS\fR ]
+.RB [ \-\-delimiter " " \fICHAR\fR ]
+.RB [ \-\-output " " \fIDIR\fR ]
+.RB [ \-\-skip-header ]
+.RB [ \-\-quiet ]
+.SH DESCRIPTION
+.B sandra-conciliate
+es el motor de conciliaci\['o]n batch del ecosistema Sandra. Compara dos
+archivos CSV determinando coincidencias y hallazgos (diferencias) bas\['a]ndose
+en columnas clave definidas por el usuario.
+
+Utiliza
+.BR rayon
+para procesamiento paralelo en m\['u]ltiples n\['u]cleos, logrando
+alt\['i]simo throughput en archivos masivos (500.000+ registros).
+
+El algoritmo opera en dos fases:
+.PP
+1. \fBFase de Indexaci\['o]n (Build)\fR: carga el archivo de comparaci\['o]n en
+un HashMap optimizado en memoria.
+.PP
+2. \fBFase de Sondeo (Probe)\fR: lee l\['i]nea por l\['i]nea el archivo origen
+y realiza b\['u]squeda O(1) en el \['i]ndice.
+
+Resultados: coincidencias, hallazgos y log de errores de parsing.
+.SH OPTIONS
+.TP
+.BR \-c ", " \-\-comparison " " \fIFILE\fR
+Archivo de comparaci\['o]n (ej. extracto bancario).
+.TP
+.B \-\-comparison-columns " " \fICOLS\fR
+\['I]ndices de columnas a usar como clave en el archivo de comparaci\['o]n,
+separados por coma (ej. "0,1,2").
+.TP
+.BR \-o ", " \-\-origin " " \fIFILE\fR
+Archivo de origen (ej. registros del sistema de n\['o]mina).
+.TP
+.B \-\-origin-columns " " \fICOLS\fR
+\['I]ndices de columnas del archivo origen a comparar (ej. "0,1,3").
+.TP
+.B \-\-delimiter " " \fICHAR\fR
+Delimitador de campos en ambos archivos CSV. Por defecto:
+.BR ";" .
+.TP
+.B \-\-output " " \fIDIR\fR
+Directorio de salida donde se generan los reportes. Por defecto:
+.BR out .
+.TP
+.B \-\-skip-header
+Omite la primera l\['i]nea de ambos archivos (header).
+.TP
+.BR \-q ", " \-\-quiet
+Modo silencioso: suprime barras de progreso y res\['u]menes intermedios.
+.SH OUTPUT FILES
+.TP
+.I coincidencias.txt
+L\['i]neas del origen que encontraron coincidencia exacta en el archivo de
+comparaci\['o]n.
+.TP
+.I hallazgos.txt
+L\['i]neas del origen que NO encontraron coincidencia (diferencias).
+.TP
+.I log.txt
+Registro de errores de parsing o l\['i]neas malformadas.
+.TP
+.I reporte.txt
+Resumen estad\['i]stico: total de l\['i]neas, coincidencias, hallazgos,
+tiempo de ejecuci\['o]n.
+.SH EXIT STATUS
+.TP
+.B 0
+Comparaci\['o]n completada exitosamente.
+.TP
+.B 1
+Error de argumentos o archivo inaccesible.
+.TP
+.B 2
+Error de parsing en columnas o formato CSV inv\['a]lido.
+.SH ENVIRONMENT
+.TP
+.B RAYON_NUM_THREADS
+L\['i]mite de hilos paralelos para el procesamiento batch (default: n\['u]cleos
+detectados autom\['a]ticamente).
+.SH EXAMPLES
+.PP
+Conciliar movimientos bancarios vs. sistema de n\['o]mina:
+.RS
+.nf
+$ sandra-conciliate \\
+    --comparison banco.csv \\
+    --comparison-columns 0,1,2 \\
+    --origin nomina.csv \\
+    --origin-columns 0,1,3 \\
+    --delimiter ";" \\
+    --output ./conciliacion_out
+.fi
+.RE
+.PP
+Uso desde el CLI principal:
+.RS
+.nf
+$ sandra conciliate \\
+    --comparison banco.csv \\
+    --comparison-columns 0,1 \\
+    --origin sistema.csv \\
+    --origin-columns 0,1 \\
+    --quiet
+.fi
+.RE
+.SH SEE ALSO
+.BR sandra-sentinel (1),
+.BR sandra-reconciler (1),
+.BR resumen-procesos.toml (5)
+.SH AUTHORS
+Desarrollado por el Equipo de Ingenier\['i]a Sandra / F\['a]brica de Software.
+Original: Carlos Pe\[~n]a.
+.SH COPYRIGHT
+Copyright \(co 2024-2026 Code-Epic Technologies. Licenciado bajo t\['e]rminos
+internos de custodia digital LOFANB.

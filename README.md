@@ -771,6 +771,42 @@ cargo build --release --package sandra_sentinel
 
 ---
 
+## Páginas de Manual (man pages)
+
+Cada binario del ecosistema incluye documentación en formato troff para lectura vía `man`.
+
+### Instalación
+
+```bash
+# Desde el repositorio clonado
+cd rust/sandra.sentinel/man
+./install-man.sh
+
+# O con prefijo personalizado (ej. Homebrew)
+./install-man.sh /opt/homebrew
+```
+
+### Uso
+
+```bash
+man sandra-sentinel      # CLI principal y subcomandos
+man sandra-reconciler    # Motor de conciliación streaming CSV vs gRPC
+man sandra-conciliate    # Comparador batch de archivos CSV
+man sandra               # Overview del ecosistema (sección 7)
+```
+
+### Contenido de cada página
+
+| Página | Sección | Secciones incluidas |
+|---|---|---|
+| `sandra-sentinel(1)` | 1 | NAME, SYNOPSIS, DESCRIPTION, COMMANDS (start, conciliate, reconcile-stream, patria, validar, version), OPTIONS por subcomando, EXIT STATUS, FILES, ENVIRONMENT, EXAMPLES |
+| `sandra-reconciler(1)` | 1 | NAME, SYNOPSIS, DESCRIPTION (pipeline de 6 fases), OPTIONS, OUTPUT FILES, EXIT STATUS, EXAMPLES |
+| `sandra-conciliate(1)` | 1 | NAME, SYNOPSIS, DESCRIPTION (Build/Probe), OPTIONS, OUTPUT FILES, EXIT STATUS, EXAMPLES |
+| `sandra(7)` | 7 | ECOSISTEMA, ARQUITECTURA, COMPONENTES TECNICOS, CONEXION CON SANDRA SERVER, FORMATOS DE DATOS, HISTORIA |
+| `sandra-conciliate(1)` | NAME, SYNOPSIS, DESCRIPTION (algoritmo Build/Probe), OPTIONS, OUTPUT FILES, ENVIRONMENT (RAYON_NUM_THREADS), EXIT STATUS, EXAMPLES |
+
+---
+
 ## Sección Científica — Justificación Técnica del Stack
 
 ### Memory Safety como Garantía de Integridad Financiera

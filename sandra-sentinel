@@ -243,19 +243,46 @@ cmd_install() {
     cmd_build
 
     local target_dir="target/release"
-    local install_prefix="${INSTALL_PREFIX:-/usr/local/bin}"
+    local install_prefix="${INSTALL_PREFIX:-/usr/local}"
+    local bin_dir="${install_prefix}/bin"
+    local man_dir="${install_prefix}/share/man/man1"
 
-    log_step "Instalando bins en ${install_prefix}..."
+    log_step "Instalando bins en ${bin_dir}..."
+    mkdir -p "$bin_dir"
     for bin in "${BINS[@]}"; do
         local src="${SCRIPT_DIR}/${target_dir}/${bin}"
         if [[ -f "$src" ]]; then
-            cp "$src" "${install_prefix}/${bin}"
-            chmod +x "${install_prefix}/${bin}"
+            cp "$src" "${bin_dir}/${bin}"
+            chmod +x "${bin_dir}/${bin}"
             log_ok "  ${bin} instalado"
         else
             log_error "  ${bin} no encontrado"
         fi
     done
+
+    log_step "Instalando man pages..."
+    local man1_dir="${install_prefix}/share/man/man1"
+    local man7_dir="${install_prefix}/share/man/man7"
+    mkdir -p "$man1_dir" "$man7_dir"
+    for page in sandra-sentinel.1 sandra-reconciler.1 sandra-conciliate.1; do
+        local src="${SCRIPT_DIR}/man/${page}"
+        if [[ -f "$src" ]]; then
+            cp "$src" "${man1_dir}/${page}"
+            chmod 644 "${man1_dir}/${page}"
+            log_ok "  ${page} instalado"
+        else
+            log_warn "  ${page} no encontrado"
+        fi
+    done
+    local src7="${SCRIPT_DIR}/man/sandra.7"
+    if [[ -f "$src7" ]]; then
+        cp "$src7" "${man7_dir}/sandra.7"
+        chmod 644 "${man7_dir}/sandra.7"
+        log_ok "  sandra.7 instalado"
+    else
+        log_warn "  sandra.7 no encontrado"
+    fi
+
     log_ok "Instalación completada"
 }
 
@@ -282,6 +309,15 @@ cmd_dist() {
         local src="${SCRIPT_DIR}/${target_dir}/${bin}"
         [[ -f "$src" ]] && cp "$src" "${dist_path}/"
     done
+
+    # Copiar man pages
+    local man_dir="${dist_path}/man"
+    mkdir -p "$man_dir"
+    for page in sandra-sentinel.1 sandra-reconciler.1 sandra-conciliate.1 sandra.7; do
+        local src="${SCRIPT_DIR}/man/${page}"
+        [[ -f "$src" ]] && cp "$src" "${man_dir}/"
+    done
+    cp "${SCRIPT_DIR}/man/install-man.sh" "${man_dir}/" 2>/dev/null || true
 
     # Metadatos
     cat > "${dist_path}/VERSION" <<EOF

@@ -139,12 +139,14 @@ jobs:
           mkdir -p release
           cp target/${{ matrix.target }}/release/${{ matrix.bin }} release/${{ matrix.artifact }}
           chmod +x release/${{ matrix.artifact }}
+          # Copiar man pages comunes a todos los productos
+          cp man/sandra-sentinel.1 man/sandra-reconciler.1 man/sandra-conciliate.1 man/sandra.7 release/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: release/${{ matrix.artifact }}
+          path: release/*
 
   create-release:
     needs: [extract-version, build]
@@ -162,8 +164,8 @@ jobs:
           mkdir -p release
           cd artifacts
           for dir in */; do
-            for binary in "$dir"/*; do
-              cp "$binary" ../release/
+            for file in "$dir"/*; do
+              cp "$file" ../release/
             done
           done
           cd ../release
@@ -181,6 +183,12 @@ jobs:
             - `sandra-sentinel` — Core de nómina, conciliación bancaria y patria (LOFANB)
             - `sandra-reconciler` — Motor de conciliación streaming CSV vs gRPC
             - `sandra-conciliate` — Comparador batch de archivos CSV (ex scf)
+
+            ### Man pages incluidas (instalar con `./install-man.sh`)
+            - `sandra-sentinel(1)` — CLI principal y subcomandos
+            - `sandra-reconciler(1)` — Motor de conciliación streaming
+            - `sandra-conciliate(1)` — Comparador batch CSV
+            - `sandra(7)` — Overview del ecosistema Sandra Sentinel
 
             ### Subcomandos de sandra-sentinel
             - `sandra start` — Ciclo de carga y cálculo de nómina

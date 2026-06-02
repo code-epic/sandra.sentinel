@@ -1,0 +1,191 @@
+.TH SANDRA 7 "2026-06-02" "Sandra Sentinel Ecosystem 2.1.0" "Sandra Ecosystem Manual"
+.SH NAME
+sandra \- Ecosistema de conciliacion, nomina y auditoria de prestaciones
+militares (LOFANB)
+.SH DESCRIPTION
+.B Sandra Sentinel
+es una fabrica de software especializada en el dominio de la Seguridad Social
+militar de la FANB (Fuerza Armada Nacional Bolivariana). El ecosistema esta
+compuesto por tres productos Rust de alto rendimiento que operan bajo
+principios de Memory Safety, Precision Decimal Centesimal y Arquitectura
+Hexagonal.
+
+El nombre
+.B Sandra
+proviene de las siglas del sistema historico IPSFA (Instituto de Prevision
+Social de la Fuerza Armada), evolucionado hacia una plataforma de calculo
+determinista para nomina, pensiones, retroactivos y prestaciones bajo la Ley
+Organica de la Fuerza Armada Nacional Bolivariana (LOFANB).
+
+.SH ECOSISTEMA
+.SS sandra-sentinel (1)
+Nucleo de procesamiento de nomina y auditoria. Consume datos crudos de
+fuentes legadas (Oracle, PostgreSQL, MongoDB), aplica reglas de negocio
+modernas y genera estructuras unificadas validadas.
+
+Subcomandos principales:
+.TP
+.B start
+Ciclo de carga y calculo de nomina masiva (npr, nact, nrcp, nfcp, npat).
+.TP
+.B conciliate
+Conciliacion batch entre dos archivos CSV (movimientos bancarios vs.
+registros del sistema).
+.TP
+.B reconcile-stream
+Conciliacion streaming de alta velocidad: CSV local vs. flujo gRPC de
+beneficiarios en tiempo real.
+.TP
+.B patria
+Generacion de archivo de nomina para el Sistema Patria (finiquitos de
+asignacion de antiguedad).
+.TP
+.B validar
+Validacion de claves de acceso y permisos de seguridad.
+
+.SS sandra-reconciler (1)
+Motor de conciliacion streaming desarrollado en Rust. Compara un archivo CSV
+local contra un flujo gRPC de registros de beneficiarios mediante un pipeline
+de seis fases: carga CSV (memmap2), conexion gRPC, consumo de stream NDJSON,
+fusion/comparacion campo-a-campo con estrategias (Exact, Numeric, Date,
+Cedula), deteccion de huerfanos CSV, y generacion de reportes.
+
+Genera siete artefactos de salida:
+.RS
+.IP \(bu 2
+correctos.csv — coincidencias 100%
+.IP \(bu 2
+rechazos.csv — diferencias parciales
+.IP \(bu 2
+nuevos.csv — registros CSV sin match en gRPC
+.IP \(bu 2
+pendientes.csv — registros gRPC sin match en CSV
+.IP \(bu 2
+errores.jsonl — diferencias detalladas campo a campo
+.IP \(bu 2
+postgres_batch.sql — bulk UPDATE para PostgreSQL
+.IP \(bu 2
+insert_batch.sql — bulk INSERT para registros nuevos
+.RE
+
+.SS sandra-conciliate (1)
+Comparador batch de archivos CSV (ex scf). Utiliza el patron Build/Probe con
+indexacion en HashMap y procesamiento paralelo via rayon. Disenado para
+volumenes masivos (500.000+ registros) con throughput constante.
+
+.SH ARQUITECTURA
+.SS Memory Safety como Garantia de Integridad Financiera
+El compilador de Rust, mediante Ownership y Borrow Checker, transforma errores
+de runtime (use-after-free, data races, buffer overflows) en errores de
+compilacion. En un sistema que procesa ~500.000 registros de personal activo,
+reserva y sobrevivientes, esto equivale a eliminar clases enteras de fallos
+catastroficos antes del despliegue.
+
+.SS Precision Decimal Centesimal
+La aritmetica de coma flotante (f32 / f64) esta prohibida en el motor de
+calculo. La Ley Organica de Seguridad Social de la FANB exige exactitud de dos
+decimales (centesimos de bolivar). Se utiliza rust_decimal::Decimal para toda
+operacion monetaria.
+
+.SS Arquitectura Hexagonal (Ports & Adapters)
+El nucleo logico (core) esta totalmente desacoplado de las interfaces de
+entrada (gRPC Streams, CSV) y salida (CLI, PostgreSQL, NDJSON). Esto permite:
+.RS
+.IP \(bu 2
+Testear la logica de negocio sin dependencias de red o I/O.
+.IP \(bu 2
+Sustituir adaptadores sin tocar el dominio (ej. cambiar gRPC por REST).
+.IP \(bu 2
+Reutilizar el mismo core en CLI, servidor y worker background.
+.RE
+
+.SH COMPONENTES TECNICOS
+.TP
+.B core
+Biblioteca Rust con el motor de calculo, reglas LOFANB, parsers NDJSON y
+serializadores de nomina.
+.TP
+.B cli
+Binario unificado (sandra-sentinel) con subcomandos via clap derive. Delega
+en core y sandra-conciliate.
+.TP
+.B reconciler
+Crate independiente de conciliacion streaming. No depende de core; se conecta
+directamente al gRPC upstream (Sandra Server Go).
+.TP
+.B sandra-conciliate
+Crate renombrado del historico scf (Sandra Conciliation File). Binario
+standalone para comparacion batch de CSVs.
+
+.SH CONEXION CON SANDRA SERVER
+Sandra Sentinel no opera en aislamiento. Se conecta via gRPC al
+.B Sandra Server
+(Go, middleware ESB) que expone streams dinamicos de beneficiarios
+(SentinelDynamicService). El protocolo utiliza NDJSON sobre HTTP/2 con
+compresion Zstd.
+
+.SH FORMATOS DE DATOS
+.TP
+.B CSV
+Entrada principal para conciliaciones. Delimitador configurable (; por
+defecto). Indexacion via memmap2 para zero-copy.
+.TP
+.B NDJSON
+Formato de stream gRPC. Cada linea es un objeto JSON plano con campos
+explicitos (no nested).
+.TP
+.B PostgreSQL
+Salida SQL generada como bulk UPDATE/INSERT con VALUES, lista para ejecucion
+en psql.
+
+.SH ENTORNOS SOPORTADOS
+.TS
+center box;
+c c c .
+Plataforma	Arquitectura	Notas
+_
+macOS	aarch64, x86_64	Homebrew formula: code-epic/sandra
+Linux	x86_64 (glibc)	CentOS 8/9, Ubuntu 22.04/24.04
+.TE
+
+.SH LICENCIA Y CUSTODIA
+Copyright (c) 2024-2026 Code-Epic Technologies. El ecosistema Sandra Sentinel
+esta licenciado bajo terminos internos de custodia digital LOFANB. Toda
+modificacion, redistribucion o despliegue en entornos de produccion requiere
+autorizacion explicita del Instituto de Prevision Social de la Fuerza Armada
+(IPSSFA).
+
+.SH HISTORIA
+Sandra evoluciono desde un sistema monolitico Java/Oracle (IPSFA historico)
+hacia una arquitectura distribuida multi-lenguaje: servidor Go (API REST,
+WebSockets, gRPC), motor Rust (calculo determinista), desktop Tauri (Angular +
+SQLite cifrado) y consola Angular (administracion SRE). Sentinel representa la
+capa de calculo y auditoria del backend.
+
+.SH FILES
+.TP
+.I /usr/local/bin/sandra-sentinel
+Binario principal del CLI.
+.TP
+.I /usr/local/bin/sandra-reconciler
+Motor de conciliacion streaming.
+.TP
+.I /usr/local/bin/sandra-conciliate
+Comparador batch CSV.
+.TP
+.I /usr/local/share/man/man1/sandra-*.1
+Paginas de manual de seccion 1.
+.TP
+.I /usr/local/share/man/man7/sandra.7
+Esta pagina de overview.
+
+.SH SEE ALSO
+.BR sandra-sentinel (1),
+.BR sandra-reconciler (1),
+.BR sandra-conciliate (1),
+.BR resumen-procesos.toml (5),
+.BR compile.sh
+.SH AUTHORS
+Desarrollado por el Equipo de Ingenieria Sandra / Fabrica de Software.
+.SH COPYRIGHT
+Copyright (c) 2024-2026 Code-Epic Technologies.

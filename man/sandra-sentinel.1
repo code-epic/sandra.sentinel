@@ -1,0 +1,233 @@
+.TH SANDRA-SENTINEL 1 "2026-06-02" "Sandra Sentinel 2.1.0" "Sandra Ecosystem Manual"
+.SH NAME
+sandra-sentinel \- Motor de c\['a]lculo de n\['o]mina militar y auditor\['i]a de prestaciones (LOFANB)
+.SH SYNOPSIS
+.B sandra-sentinel
+.RB [ COMMAND ]
+.RI [ OPTIONS ]
+
+.B sandra
+.RB [ COMMAND ]
+.RI [ OPTIONS ]
+.SH DESCRIPTION
+.B sandra-sentinel
+es el n\['u]cleo de procesamiento de alto rendimiento desarrollado en Rust para la
+auditor\['i]a, fusi\['o]n computacional y proyecci\['o]n de n\['o]minas masivas en
+entornos jer\['a]rquicos complejos.
+
+Act\['u]a como un auditor determinista: consume datos crudos de fuentes legadas,
+aplica reglas de negocio modernas y genera una estructura de datos unificada y validada.
+
+Est\['a] dise\[~n]ado bajo principios de Zero-Cost Abstractions y seguridad de
+memoria, operando bajo un patr\['o]n de Arquitectura Hexagonal (Ports & Adapters).
+El n\['u]cleo l\['o]gico (core) est\['a] totalmente desacoplado de las interfaces de
+entrada (gRPC Streams) y salida (CLI/CSV).
+
+.SH COMMANDS
+.TP
+.B start
+Inicia el ciclo de carga y c\['a]lculo de n\['o]mina. Conecta con Sandra Server
+y ejecuta el ciclo completo de elaboraci\['o]n.
+.TP
+.B conciliate
+Compara dos archivos CSV para conciliaci\['o]n bancaria: movimientos del banco vs.
+registros del sistema.
+.TP
+.B reconcile-stream
+Conciliaci\['o]n de alta velocidad: archivo CSV vs. stream gRPC de beneficiarios
+en tiempo real.
+.TP
+.B patria
+Genera archivo de n\['o]mina para cargar en el Sistema Patria (finiquitos de
+asignaci\['o]n de antig\[u]edad).
+.TP
+.B validar
+Valida claves de acceso y permisos de seguridad.
+.TP
+.B version
+Muestra la versi\['o]n detallada del compilado.
+.SH OPTIONS
+.SS Global Options
+.TP
+.BR \-h ", " \-\-help
+Muestra ayuda exhaustiva para el comando o subcomando seleccionado.
+.TP
+.BR \-V ", " \-\-version
+Imprime la versi\['o]n del binario y sale.
+.SS start
+.TP
+.BR \-x ", " \-\-execute
+Ejecuta el ciclo de carga inmediatamente al iniciar.
+.TP
+.B \-\-log
+Habilita el registro de eventos en archivo
+.RI ( sandra_sentinel.log ).
+.TP
+.BR \-s ", " \-\-sensors
+Activa la recolecci\['o]n de m\['e]tricas de rendimiento y genera reporte final.
+.TP
+.BR \-m ", " \-\-manifest " " \fIFILE\fR
+Ruta a un archivo de manifiesto (.json) para configurar la ejecuci\['o]n.
+.TP
+.BR \-t ", " \-\-tipo " " \fITIPO\fR
+Tipo de n\['o]mina a generar (npr, nact, nrcp, nfcp, npat).
+Por defecto:
+.BR npr .
+.TP
+.BR \-d ", " \-\-debug
+Activa mensajes de debug para depuraci\['o]n.
+.SS conciliate
+.TP
+.BR \-c ", " \-\-comparison " " \fIFILE\fR
+Archivo de comparaci\['o]n (ej. movimientos del banco).
+.TP
+.B \-\-comparison-columns " " \fICOLS\fR
+Columnas a usar como clave en el archivo de comparaci\['o]n (ej. "0,1,2").
+.TP
+.BR \-o ", " \-\-origin " " \fIFILE\fR
+Archivo de origen (ej. registros del sistema).
+.TP
+.B \-\-origin-columns " " \fICOLS\fR
+Columnas del archivo origen.
+.TP
+.B \-\-delimiter " " \fICHAR\fR
+Delimitador CSV. Por defecto:
+.BR ";" .
+.TP
+.B \-\-output " " \fIDIR\fR
+Directorio de salida. Por defecto:
+.BR out .
+.TP
+.B \-\-skip-header
+Omite la primera l\['i]nea (header).
+.TP
+.BR \-q ", " \-\-quiet
+Modo silencioso.
+.SS reconcile-stream
+.TP
+.B \-\-csv-path " " \fIFILE\fR
+Ruta al archivo CSV de entrada.
+.TP
+.B \-\-field-mapping " " \fIFILE\fR
+Ruta al mapping JSON de campos (opcional; si se omite, se detecta autom\['a]ticamente).
+.TP
+.B \-\-grpc-url " " \fIURL\fR
+URL del endpoint gRPC. Por defecto:
+.BR http://localhost:50051 .
+.TP
+.B \-\-grpc-function " " \fINAME\fR
+Nombre de la funci\['o]n din\['a]mica gRPC. Por defecto:
+.BR IPSFA_CBeneficiarios .
+.TP
+.B \-\-grpc-parametros " " \fIVAL\fR
+Par\['a]metros SQL/filtro gRPC. Por defecto:
+.BR \"%\" .
+.TP
+.B \-\-chunk-size " " \fIN\fR
+Tama\[~n]o de chunk. Por defecto:
+.BR 10000 .
+.TP
+.B \-\-output-dir " " \fIDIR\fR
+Directorio de salida. Por defecto:
+.BR ./reconcile-out .
+.TP
+.B \-\-delimiter " " \fICHAR\fR
+Delimitador CSV. Por defecto:
+.BR ";" .
+.TP
+.B \-\-skip-header
+Omite header.
+.TP
+.BR \-q ", " \-\-quiet
+Modo silencioso.
+.TP
+.B \-\-debug
+Activa modo diagn\['o]stico de campos.
+.SS patria
+.TP
+.BR \-m ", " \-\-manifest " " \fIFILE\fR
+Ruta al archivo de manifiesto (.json) con configuraci\['o]n.
+.TP
+.BR \-c ", " \-\-conciliacion
+Generar reportes de conciliaci\['o]n (montos negativos, sin cuenta, duplicados).
+.TP
+.BR \-d ", " \-\-debug
+Activa mensajes de debug.
+.SH EXIT STATUS
+.TP
+.B 0
+Ejecuci\['o]n exitosa.
+.TP
+.B 1
+Error general (argumentos inv\['a]lidos, I/O, gRPC).
+.TP
+.B 2
+Error de parsing o validaci\['o]n de datos.
+.SH FILES
+.TP
+.I sandra_sentinel.log
+Log de eventos generado con
+.BR \-\-log .
+.TP
+.I ~/.config/sandra/sandra.ini
+Configuraci\['o]n global del sistema (INI).
+.TP
+.I /tmp/sandra_reconciler_default_mapping.json
+Mapping por defecto generado temporalmente cuando no se provee
+.BR \-\-field-mapping .
+.SH ENVIRONMENT
+.TP
+.B SENTINEL_VERSION
+Versi\['o]n inyectada en tiempo de compilaci\['o]n.
+.TP
+.B SENTINEL_COMMIT
+Hash del commit Git.
+.TP
+.B SENTINEL_BUILD_DATE
+Fecha de compilaci\['o]n en formato ISO-8601.
+.SH EXAMPLES
+.PP
+Iniciar c\['a]lculo de n\['o]mina inmediatamente:
+.RS
+.nf
+$ sandra start --execute --log --sensors
+.fi
+.RE
+.PP
+Conciliar movimientos bancarios:
+.RS
+.nf
+$ sandra conciliate \\
+    --comparison banco.csv --comparison-columns 0,1,2 \\
+    --origin sistema.csv --origin-columns 0,1,3 \\
+    --delimiter ";" --output ./out
+.fi
+.RE
+.PP
+Reconciliar CSV vs. stream gRPC:
+.RS
+.nf
+$ sandra reconcile-stream \\
+    --csv-path nomina.csv \\
+    --field-mapping mapping.json \\
+    --grpc-url http://localhost:50051 \\
+    --grpc-function IPSFA_CBeneficiariosConciliate
+.fi
+.RE
+.PP
+Generar n\['o]mina Patria:
+.RS
+.nf
+$ sandra patria --manifest nomina_patria.json --tipo npat
+.fi
+.RE
+.SH SEE ALSO
+.BR sandra-reconciler (1),
+.BR sandra-conciliate (1),
+.BR resumen-procesos.toml (5),
+.BR README.md
+.SH AUTHORS
+Desarrollado por el Equipo de Ingenier\['i]a Sandra / F\['a]brica de Software.
+.SH COPYRIGHT
+Copyright \(co 2024-2026 Code-Epic Technologies. Licenciado bajo t\['e]rminos
+internos de custodia digital LOFANB.
