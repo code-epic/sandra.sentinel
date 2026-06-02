@@ -1,4 +1,4 @@
-name: Release
+name: Release — Sandra Ecosystem
 
 on:
   push:
@@ -12,32 +12,79 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  RUST_PACKAGE: sandra_sentinel
-  BINARY_NAME: sandra-sentinel
-  HOMEBREW_TAP_REPO: code-epic/homebrew-sandra
-  HOMEBREW_FORMULA: sandra-sentinel.rb
 
 jobs:
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
   build:
+    needs: extract-version
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14 # Apple Silicon runners
+          # sandra-sentinel (CLI principal)
+          - product: sandra-sentinel
+            package: sandra_sentinel
+            bin: sandra-sentinel
+            os: macos-14
             target: aarch64-apple-darwin
-            artifact_name: sandra-sentinel-aarch64-apple-darwin
+            artifact: sandra-sentinel-aarch64-apple-darwin
             cross: false
-          - os: macos-14
+          - product: sandra-sentinel
+            package: sandra_sentinel
+            bin: sandra-sentinel
+            os: macos-14
             target: x86_64-apple-darwin
-            artifact_name: sandra-sentinel-x86_64-apple-darwin
+            artifact: sandra-sentinel-x86_64-apple-darwin
             cross: true
-          - os: ubuntu-latest
+          - product: sandra-sentinel
+            package: sandra_sentinel
+            bin: sandra-sentinel
+            os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: sandra-sentinel-centos8-x86_64
+            artifact: sandra-sentinel-x86_64-linux-gnu
             cross: false
-          - os: ubuntu-latest
+
+          # sandra-reconciliate (Streaming Engine)
+          - product: sandra-reconciliate
+            package: reconciler
+            bin: sandra-reconciler
+            os: macos-14
+            target: aarch64-apple-darwin
+            artifact: sandra-reconciliate-aarch64-apple-darwin
+            cross: false
+          - product: sandra-reconciliate
+            package: reconciler
+            bin: sandra-reconciler
+            os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: sandra-sentinel-centos9-x86_64
+            artifact: sandra-reconciliate-x86_64-linux-gnu
+            cross: false
+
+          # sandra-conciliate (Batch Diff Engine)
+          - product: sandra-conciliate
+            package: sandra_conciliate
+            bin: sandra-conciliate
+            os: macos-14
+            target: aarch64-apple-darwin
+            artifact: sandra-conciliate-aarch64-apple-darwin
+            cross: false
+          - product: sandra-conciliate
+            package: sandra_conciliate
+            bin: sandra-conciliate
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: sandra-conciliate-x86_64-linux-gnu
             cross: false
 
     runs-on: ${{ matrix.os }}
@@ -45,6 +92,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -64,38 +113,51 @@ jobs:
 
       - name: Install cross toolchain (macOS cross-compile)
         if: matrix.cross == true
-        run: |
-          rustup target add ${{ matrix.target }}
+        run: rustup target add ${{ matrix.target }}
 
-      - name: Build
+      - name: Inject version into build
         run: |
-          cargo build --release --target ${{ matrix.target }} --package ${{ env.RUST_PACKAGE }}
+          echo "SENTINEL_VERSION=${{ needs.extract-version.outputs.version }}" >> $GITHUB_ENV
+          echo "SENTINEL_COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+          echo "SENTINEL_BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
 
-      - name: Prepare binary
+      - name: Build release binary
+        run: |
+          SENTINEL_VERSION=${{ needs.extract-version.outputs.version }} \
+          SENTINEL_COMMIT=${{ github.sha }} \
+          SENTINEL_BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+          cargo build --release --target ${{ matrix.target }} --package ${{ matrix.package }}
+
+      - name: Strip binary (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          strip target/${{ matrix.target }}/release/${{ matrix.bin }}
+
+      - name: Prepare artifact
         shell: bash
         run: |
           mkdir -p release
-          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }} release/${{ matrix.artifact_name }}
-          chmod +x release/${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/${{ matrix.bin }} release/${{ matrix.artifact }}
+          chmod +x release/${{ matrix.artifact }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: release/${{ matrix.artifact_name }}
+          name: ${{ matrix.artifact }}
+          path: release/${{ matrix.artifact }}
 
   create-release:
-    needs: build
+    needs: [extract-version, build]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
     steps:
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Create checksums
+      - name: Create release directory & checksums
         run: |
           mkdir -p release
           cd artifacts
@@ -108,9 +170,28 @@ jobs:
           sha256sum * > checksums.txt
           cat checksums.txt
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: "Sandra Ecosystem v${{ needs.extract-version.outputs.version }}"
+          body: |
+            ## Sandra Sentinel Ecosystem v${{ needs.extract-version.outputs.version }}
+
+            ### Binarios incluidos
+            - `sandra-sentinel` — Core de nómina y pensiones (LOFANB)
+            - `sandra-reconciliate` — Motor de conciliación streaming CSV vs gRPC
+            - `sandra-conciliate` — Diferencias batch entre archivos CSV
+
+            ### Verificación de integridad
+            ```
+            sha256sum -c checksums.txt
+            ```
+
+            ### Compatibilidad
+            | Plataforma | Arquitectura |
+            |------------|--------------|
+            | macOS      | aarch64, x86_64 |
+            | Linux      | x86_64 (glibc) |
           files: release/*
           draft: false
           prerelease: false
@@ -122,52 +203,36 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Update formula via GitHub API
+      - name: Update Homebrew formula
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ needs.extract-version.outputs.version }}
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          ASSETS_URL="https://github.com/code-epic/sandra.sentinel/releases/download/v$VERSION"
+          ASSETS_URL="https://github.com/${{ github.repository }}/releases/download/v$VERSION"
           FORMULA_PATH="Formula/sandra-sentinel.rb"
-          REPO="${{ env.HOMEBREW_TAP_REPO }}"
+          REPO="code-epic/homebrew-sandra"
 
-          # Descargar binarios y calcular sha256
           declare -A SHASUMS
-          for binary in sandra-sentinel-aarch64-apple-darwin sandra-sentinel-x86_64-apple-darwin sandra-sentinel-centos8-x86_64 sandra-sentinel-centos9-x86_64; do
-            echo "Downloading $binary..."
+          for binary in sandra-sentinel-aarch64-apple-darwin sandra-sentinel-x86_64-apple-darwin sandra-sentinel-x86_64-linux-gnu; do
             curl -sL "$ASSETS_URL/$binary" -o "/tmp/$binary"
             SHASUMS[$binary]=$(sha256sum "/tmp/$binary" | awk '{print $1}')
-            echo "$binary sha256: ${SHASUMS[$binary]}"
           done
 
-          # Obtener el contenido actual de la fórmula via API
           FILE_INFO=$(gh api "repos/$REPO/contents/$FORMULA_PATH")
           FILE_SHA=$(echo "$FILE_INFO" | jq -r '.sha')
           CONTENT=$(echo "$FILE_INFO" | jq -r '.content' | base64 -d)
 
-          # Aplicar sustituciones
-          # Nota: los patrones cubren ambos formatos:
-          #   sha256 "HASH # binary"   (comentario dentro de comillas)
-          #   sha256 "HASH" # binary   (comentario fuera de comillas)
           UPDATED=$(echo "$CONTENT" \
             | sed "s/version \"[^\"]*\"/version \"$VERSION\"/" \
-            | sed "s|vVERSION_PLACEHOLDER|v$VERSION|g" \
             | sed "s|/download/v[0-9][^/]*/|/download/v$VERSION/|g" \
             | sed "s|sha256 \"[^\"]*# sandra-sentinel-aarch64-apple-darwin\"|sha256 \"${SHASUMS[sandra-sentinel-aarch64-apple-darwin]}\"|" \
             | sed "s|sha256 \"[^\"]*# sandra-sentinel-x86_64-apple-darwin\"|sha256 \"${SHASUMS[sandra-sentinel-x86_64-apple-darwin]}\"|" \
-            | sed "s|sha256 \"[^\"]*# sandra-sentinel-centos8-x86_64\"|sha256 \"${SHASUMS[sandra-sentinel-centos8-x86_64]}\"|" \
-            | sed "s|sha256 \"[^\"]*# sandra-sentinel-centos9-x86_64\"|sha256 \"${SHASUMS[sandra-sentinel-centos9-x86_64]}\"|")
+            | sed "s|sha256 \"[^\"]*# sandra-sentinel-x86_64-linux-gnu\"|sha256 \"${SHASUMS[sandra-sentinel-x86_64-linux-gnu]}\"|")
 
-          echo "--- Formula actualizada ---"
-          echo "$UPDATED" | grep -E "(url|version|sha256)"
-
-          # Subir via API (sin git push)
           ENCODED=$(echo "$UPDATED" | base64 -w 0)
           gh api "repos/$REPO/contents/$FORMULA_PATH" \
             --method PUT \
             --field message="Release v$VERSION" \
             --field content="$ENCODED" \
             --field sha="$FILE_SHA"
-
-          echo "✅ Fórmula actualizada exitosamente"

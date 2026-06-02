@@ -771,6 +771,51 @@ cargo build --release --package sandra_sentinel
 
 ---
 
+## Sección Científica — Justificación Técnica del Stack
+
+### Memory Safety como Garantía de Integridad Financiera
+
+Sandra Sentinel está construido en **Rust** (Edición 2021) porque el dominio financiero-militar no admite comportamiento indefinido (UB). Cada cálculo de pensión, retroactivo o prima de antigüedad opera sobre estructuras de datos que, en lenguajes con recolector de basura o manejo manual de memoria, podrían sufrir:
+
+- **Use-after-free** al procesar streams gRPC concurrentes.
+- **Data races** en el `HashMap` de indexación CSV cuando múltiples tareas `tokio::spawn` escriben métricas atómicas.
+- **Buffer overflows** al parsear NDJSON masivo proveniente de sistemas Go upstream.
+
+El compilador de Rust, mediante el sistema de Ownership y Borrow Checker, transforma estos errores de runtime en **errores de compilación**. En un sistema que procesa ~500.000 registros de personal activo, reserva y sobrevivientes, esto equivale a eliminar clases enteras de fallos catastróficos antes del despliegue.
+
+### Precisión Decimal Centesimal — El Rechazo al Float Estándar
+
+La aritmética de coma flotante (`f32` / `f64`) está prohibida en el motor de cálculo. La Ley Orgánica de Seguridad Social de la FANB exige que todo monto se exprese con exactitud de **dos decimales** (centésimos de bolívar). Un error de redondeo de `0.01` en 500.000 registros representa una discrepancia legal de **Bs. 5.000**.
+
+Sentinel adopta **`rust_decimal::Decimal`** con precisión de 28 dígitos significativos y base 10. Esto garantiza:
+
+- **Idempotencia**: `0.1 + 0.2 == 0.3` evalúa a `true`.
+- **Determinismo**: el mismo input genera el mismo output en arquitecturas x86_64 y ARM64.
+- **Compatibilidad legal**: los montos almacenados en PostgreSQL como `NUMERIC` se replican bit-a-bit en memoria sin conversión binaria intermedia.
+
+Para operaciones vectoriales masivas, se utiliza **SIMD** vía `packed_simd_2` únicamente en etapas de indexación y parsing, nunca en la fase de cálculo monetario.
+
+---
+
+## Sección Legal — Marco Normativo LOFANB y Custodia Digital
+
+### Fundamento Legal: Ley Negro Primero
+
+La **Ley Orgánica de Seguridad Social de la Fuerza Armada Nacional Bolivariana** (LOFANB, también denominada *Ley Negro Primero*) establece que los reportes de nómina, pensión y prestaciones son **actos administrativos sujetos a control posterior** por la Contraloría General y el Tribunal Supremo de Justicia en materia de seguridad social.
+
+Sentinel cumple este mandato mediante:
+
+1. **Inmutabilidad de reportes**: cada archivo generado (`correctos.csv`, `rechazos.csv`, `postgres_batch.sql`, `detalle.txt`) se acompaña de un **checksum BLAKE3** que se registra en el `resumen-procesos.toml`. Cualquier alteración post-firma invalida el documento ante auditoría.
+2. **Custodia de archivos digitales de crédito**: los fideicomisos y fideicomitentes asociados a los componentes de pensión (artículos 35-42 LOFANB) generan registros que se almacenan en repositorios objeto (S3-compatible) con versionado WORM (*Write Once Read Many*).
+3. **Trazabilidad de operadores**: el campo `operador_id` en el AURP vincula cada ejecución a un usuario del SIAPE (Sistema Integral de Administración de Personal), garantizando la responsabilidad individual.
+4. **Prescripción técnica**: los archivos de conciliación se conservan por un mínimo de **10 años** conforme al artículo 120 de la Ley Orgánica de la Contraloría General de la República, en formato abierto (CSV, TOML, SQL) y cifrado en reposo (AES-256-GCM).
+
+### Cláusula de Validez Probatoria
+
+> "Los archivos generados por el subsistema `sandra-conciliate` y `sandra-reconciliate` constituyen documentos públicos administrativos de alta confiabilidad técnica, susceptibles de ser presentados como prueba pericial informática en procedimientos contenciosos de seguridad social, conforme a la Ley de Procedimiento Administrativo y al Código Civil vigente."
+
+---
+
 ## Release Guide
 
 Ver [RELEASE.md](docs/RELEASE.md) para instrucciones de cómo crear releases y gestionar el workflow de GitHub Actions.

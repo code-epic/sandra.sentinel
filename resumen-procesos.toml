@@ -1,0 +1,106 @@
+# Sandra Sentinel — Archivo Único de Resumen de Procesos (AURP)
+# Formato: TOML v1.0.0
+# Frecuencia de actualización: Al finalizar cada ejecución de reconciliación
+# Custodio: SRE Lead / Auditoría Legal LOFANB
+
+[metadata]
+project     = "Sandra Sentinel"
+version     = "2.1.0"
+commit_hash = "${GIT_COMMIT_SHA}"
+build_date  = "${BUILD_DATE}"
+build_id    = "${GITHUB_RUN_ID}"
+environment = "production"      # production | staging | sandbox
+regulator   = "LOFANB"
+
+[indexacion]
+esquema        = "hexagonal-streaming"
+indice_csv     = "memmap2::Mmap + HashMap<String, CsvRecord>"
+indice_grpc    = "tonic::Streaming<DynamicResponse>"
+clave_primaria = "cedula_normalizada"
+shard_count    = 256
+
+[[subsistemas]]
+nombre      = "sandra-sentinel"
+rol         = "core"
+status      = "operativo"
+uptime_sec  = 0.0
+mem_rss_mb  = 0.0
+
+campos_control = [
+  { nombre = "registros_procesados",   valor = 0, tipo = "u64" },
+  { nombre = "registros_matched",      valor = 0, tipo = "u64" },
+  { nombre = "registros_partial",      valor = 0, tipo = "u64" },
+  { nombre = "registros_huerfanos_csv", valor = 0, tipo = "u64" },
+  { nombre = "registros_huerfanos_grpc", valor = 0, tipo = "u64" },
+  { nombre = "tiempo_total_ms",        valor = 0.0, tipo = "f64", precision = "ms" },
+  { nombre = "hit_rate_pct",           valor = 0.0, tipo = "f64", precision = "porcentaje" },
+]
+
+[[subsistemas]]
+nombre      = "sandra-conciliate"
+rol         = "batch-diff-engine"
+status      = "operativo"
+uptime_sec  = 0.0
+mem_rss_mb  = 0.0
+
+campos_control = [
+  { nombre = "archivos_ingresados",    valor = 0, tipo = "u64" },
+  { nombre = "diferencias_detectadas", valor = 0, tipo = "u64" },
+  { nombre = "desviacion_media_abs",   valor = "0.00", tipo = "Decimal", precision = "centesimal" },
+  { nombre = "simetria_kolmogorov",    valor = "0.00", tipo = "Decimal", precision = "centesimal" },
+  { nombre = "checksum_blake3",        valor = "", tipo = "string", notas = "Inmutabilidad garantizada post-proceso" },
+]
+
+[[subsistemas]]
+nombre      = "sandra-reconciliate"
+rol         = "streaming-engine"
+status      = "operativo"
+uptime_sec  = 0.0
+mem_rss_mb  = 0.0
+
+campos_control = [
+  { nombre = "chunks_recibidos",       valor = 0, tipo = "u64" },
+  { nombre = "bytes_stream",           valor = 0, tipo = "u64" },
+  { nombre = "latencia_red_ms",        valor = 0.0, tipo = "f64", precision = "ms" },
+  { nombre = "diffs_atomicos",         valor = 0, tipo = "u64" },
+  { nombre = "backpressure_events",    valor = 0, tipo = "u64" },
+]
+
+[auditoria]
+# Campos clave para trazabilidad legal bajo LOFANB / Ley Negro Primero
+hash_total_registros = "${BLAKE3_FULL_DATASET}"
+firma_tiempo         = "${RFC3339_TIMESTAMP}"
+operador_id          = "${OPERADOR_SIAPE}"
+custodia_digital     = "${S3_CUSTODY_URI}"
+inmutable            = true
+notas                = "Todo reporte generado es inmutable y sujeto a cadena de custodia digital."
+
+[telemetria]
+# Métricas SRE exportables a Prometheus / OpenTelemetry
+[[telemetria.metricas]]
+nombre      = "reconciler_records_per_second"
+tipo        = "gauge"
+descripcion = "Throughput de registros reconciliados por segundo"
+valor       = 0.0
+
+[[telemetria.metricas]]
+nombre      = "reconciler_memory_bytes"
+tipo        = "gauge"
+descripcion = "Consumo residente de memoria (RSS) en bytes"
+valor       = 0
+
+[[telemetria.metricas]]
+nombre      = "reconciler_errors_total"
+tipo        = "counter"
+descripcion = "Total de errores acumulados (gRPC, JSON, IO)"
+valor       = 0
+
+[[telemetria.alertas]]
+condicion   = "reconciler_memory_bytes > 8589934592"  # 8 GiB
+severidad   = "critical"
+accion      = "Escalar horizontalmente; dump de heap para análisis forense."
+
+[[telemetria.alertas]]
+condicion   = "reconciler_errors_total > 100"
+severidad   = "warning"
+accion      = "Pausar pipeline; notificar al SRE Lead y al auditor legal."

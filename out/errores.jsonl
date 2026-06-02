@@ -1601,15 +1601,3 @@
 {"cedula":"28025172","status":"PartialMatch","csv_line":"28025172,6380,1,2020-07-05,2023-07-05,20,0,0,0","diffs":[{"campo":"n_hijos","valor_csv":"1","valor_grpc":"0"}],"total_diffs":1}
 {"cedula":"13053088","status":"PartialMatch","csv_line":"13053088,30,1,1999-07-05,2024-07-04,35,0,0,0","diffs":[{"campo":"f_ult_ascenso","valor_csv":"2024-07-04","valor_grpc":"2024-07-05T00:00:00Z"}],"total_diffs":1}
 {"cedula":"16383556","status":"PartialMatch","csv_line":"16383556,1050,0,2003-07-05,2024-07-04,30,0,0,0","diffs":[{"campo":"f_ult_ascenso","valor_csv":"2024-07-04","valor_grpc":"2024-07-05T00:00:00Z"}],"total_diffs":1}
-{"cedula":"29601268","status":"NotFoundInGrpc","csv_line":"29601268,2090,0,2025-07-05,2025-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"27014122","status":"NotFoundInGrpc","csv_line":"27014122,2090,0,2025-07-05,2025-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"29856714","status":"NotFoundInGrpc","csv_line":"29856714,2090,0,2025-07-05,2025-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"27782780","status":"NotFoundInGrpc","csv_line":"27782780,2090,0,2021-07-05,2021-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"26680384","status":"NotFoundInGrpc","csv_line":"26680384,2090,0,2023-07-05,2023-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"27716705","status":"NotFoundInGrpc","csv_line":"27716705,2090,0,2021-07-05,2021-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"30577315","status":"NotFoundInGrpc","csv_line":"30577315,6390,0,2023-08-05,2023-08-05,20,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"27066077","status":"NotFoundInGrpc","csv_line":"27066077,2090,0,2023-07-05,2023-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"28025849","status":"NotFoundInGrpc","csv_line":"28025849,2090,0,2021-07-05,2021-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"27453553","status":"NotFoundInGrpc","csv_line":"27453553,2090,0,2024-07-05,2024-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"23587320","status":"NotFoundInGrpc","csv_line":"23587320,2070,0,2017-07-05,2025-07-05,25,0,0,0","diffs":[],"total_diffs":0}
-{"cedula":"30321264","status":"NotFoundInGrpc","csv_line":"30321264,2090,0,2025-07-05,2025-07-05,25,0,0,0","diffs":[],"total_diffs":0}

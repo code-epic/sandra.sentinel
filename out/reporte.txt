@@ -7,6 +7,7 @@ Hits (100% match):        6272
 Diferencias parciales:    1603
 No encontrados en CSV:    12722
 No encontrados en gRPC:   12
+Nuevos (sin ID gRPC):     12
 Pendientes revisión:      12722
 Errores:                  0
 Hit rate:                 0.00%
@@ -14,8 +15,10 @@ Hit rate:                 0.00%
 ARCHIVOS GENERADOS
   correctos.csv      → Registros 100% coincidentes (mismo formato que origen)
   rechazos.csv       → Registros con diferencias (mismo formato que origen)
+  nuevos.csv         → Registros CSV sin identificación en gRPC (INSERT)
   errores.jsonl      → Registros con diferencias detalladas campo a campo
   pendientes.csv     → Registros gRPC no existentes en CSV (cedula,nombre,apellidos,sexo)
   detalle.txt        → Descripción legible de diferencias por cédula
   postgres_batch.sql → Batch UPDATE PostgreSQL con todos los campos
+  insert_batch.sql   → Batch INSERT PostgreSQL para registros nuevos
 

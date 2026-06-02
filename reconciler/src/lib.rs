@@ -151,8 +151,10 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     let mut errores_writer = output::errores::RichErrorWriter::new(&format!("{}/errores.jsonl", out_dir))?;
     let mut pendientes_writer = output::pendientes::PendienteWriter::new(&format!("{}/pendientes.csv", out_dir), field_names.clone(), config.delimiter)?;
     let mut rechazos_writer = output::rechazos::RechazosWriter::new(&format!("{}/rechazos.csv", out_dir), field_names.clone(), config.delimiter)?;
+    let mut nuevos_writer = output::nuevos::NuevosWriter::new(&format!("{}/nuevos.csv", out_dir), field_names.clone(), config.delimiter)?;
     let mut detalle_writer = output::detalle::DetalleWriter::new(&format!("{}/detalle.txt", out_dir))?;
     let mut postgres_builder = postgres::PostgresBatchBuilder::new(field_names.clone());
+    let mut postgres_insert_builder = output::postgres_insert::PostgresInsertBuilder::new(field_names.clone());
 
     let metrics = Arc::new(LiveMetrics::new());
     let mut processed_cedulas = HashSet::new();
@@ -247,28 +249,24 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
             huerfanos_count += 1;
             metrics.records_not_found_grpc.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-            let result = ConciliationResult {
-                cedula: cedula.clone(),
-                status: ConciliationStatus::NotFoundInGrpc,
-                csv_line: Some(csv_record.raw_line.to_string()),
-                diffs: vec![],
-                processing_time: std::time::Duration::ZERO,
-                chunk_id: 0,
-            };
-            errores_writer.write(&result)?;
+            let csv_vals = extract_all_field_values_from_csv(csv_record, &field_mappings);
+            nuevos_writer.write_record(cedula, &csv_vals)?;
+            postgres_insert_builder.add(cedula, csv_vals);
         }
     }
 
     if huerfanos_count > 0 && !quiet {
-        println!("      Detectados {} registros CSV sin match en el stream gRPC", huerfanos_count);
+        println!("      Detectados {} registros CSV sin match en el stream gRPC (nuevos)", huerfanos_count);
     }
 
     correctos_writer.flush()?;
     errores_writer.flush()?;
     pendientes_writer.flush()?;
     rechazos_writer.flush()?;
+    nuevos_writer.flush()?;
     detalle_writer.flush()?;
     postgres_builder.write_to_file(&format!("{}/postgres_batch.sql", out_dir))?;
+    postgres_insert_builder.write_to_file(&format!("{}/insert_batch.sql", out_dir))?;
 
     if config.debug && !debug_records.is_empty() {
         let _ = save_debug_sample(&debug_records, out_dir);
@@ -278,8 +276,9 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     let mut final_metrics = metrics.snapshot();
     final_metrics.records_processed = final_metrics.records_matched + final_metrics.records_partial + final_metrics.records_not_found_csv;
     let pendientes_count = final_metrics.records_not_found_csv;
+    let nuevos_count = final_metrics.records_not_found_grpc;
 
-    metrics::write_metrics_report(&format!("{}/reporte.txt", out_dir), &final_metrics, pendientes_count)?;
+    metrics::write_metrics_report(&format!("{}/reporte.txt", out_dir), &final_metrics, pendientes_count, nuevos_count)?;
 
     if !quiet {
         println!("\n{:-<80}", "");
@@ -292,7 +291,7 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
         println!("  Diferencias:     {}", final_metrics.records_partial);
         println!("  No en CSV:       {}", final_metrics.records_not_found_csv);
         println!("  Pendientes rev:  {}", pendientes_count);
-        println!("  No en gRPC:      {}", final_metrics.records_not_found_grpc);
+        println!("  Nuevos (sin ID): {}", nuevos_count);
         println!("  Salidas en:      {}/", out_dir);
         println!("{:-<80}", "");
     }
@@ -375,6 +374,15 @@ fn extract_all_field_values_from_grpc(
 ) -> Vec<String> {
     field_mappings.iter().map(|m| {
         extract_value_from_json(record, &m.grpc_path).unwrap_or_default()
+    }).collect()
+}
+
+fn extract_all_field_values_from_csv(
+    csv_record: &crate::types::CsvRecord,
+    field_mappings: &[crate::types::FieldMapping],
+) -> Vec<String> {
+    field_mappings.iter().map(|m| {
+        csv_record.fields.get(&m.csv_column).cloned().unwrap_or_default()
     }).collect()
 }
 
