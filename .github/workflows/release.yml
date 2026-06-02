@@ -1,4 +1,4 @@
-name: Release — Sandra Ecosystem
+name: Release — Sandra Sentinel
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # sandra-sentinel (CLI principal)
+          # sandra-sentinel (CLI principal — core + conciliate + patria)
           - product: sandra-sentinel
             package: sandra_sentinel
             bin: sandra-sentinel
@@ -69,22 +69,6 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: sandra-reconciliate-x86_64-linux-gnu
-            cross: false
-
-          # sandra-conciliate (Batch Diff Engine)
-          - product: sandra-conciliate
-            package: sandra_conciliate
-            bin: sandra-conciliate
-            os: macos-14
-            target: aarch64-apple-darwin
-            artifact: sandra-conciliate-aarch64-apple-darwin
-            cross: false
-          - product: sandra-conciliate
-            package: sandra_conciliate
-            bin: sandra-conciliate
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact: sandra-conciliate-x86_64-linux-gnu
             cross: false
 
     runs-on: ${{ matrix.os }}
@@ -173,14 +157,20 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Sandra Ecosystem v${{ needs.extract-version.outputs.version }}"
+          name: "Sandra Sentinel v${{ needs.extract-version.outputs.version }}"
           body: |
-            ## Sandra Sentinel Ecosystem v${{ needs.extract-version.outputs.version }}
+            ## Sandra Sentinel v${{ needs.extract-version.outputs.version }}
 
             ### Binarios incluidos
-            - `sandra-sentinel` — Core de nómina y pensiones (LOFANB)
-            - `sandra-reconciliate` — Motor de conciliación streaming CSV vs gRPC
-            - `sandra-conciliate` — Diferencias batch entre archivos CSV
+            - `sandra-sentinel` — Core de nómina, conciliación bancaria y patria (LOFANB)
+            - `sandra-reconciler` — Motor de conciliación streaming CSV vs gRPC
+
+            ### Subcomandos de sandra-sentinel
+            - `sandra start` — Ciclo de carga y cálculo de nómina
+            - `sandra conciliate` — Diferencias batch entre archivos CSV
+            - `sandra reconcile-stream` — Conciliación streaming CSV vs gRPC
+            - `sandra patria` — Generación de nómina para Sistema Patria
+            - `sandra validar` — Validación de claves de acceso
 
             ### Verificación de integridad
             ```
