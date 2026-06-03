@@ -40,6 +40,15 @@ pub struct ReconcilerCli {
 
     #[arg(short, long)]
     pub debug: bool,
+
+    #[arg(short = 'z', long)]
+    pub compress: bool,
+
+    #[arg(long)]
+    pub api_url: Option<String>,
+
+    #[arg(long, default_value = "MGDBA")]
+    pub driver: String,
 }
 
 impl ReconcilerCli {
@@ -85,6 +94,9 @@ impl ReconcilerCli {
             field_mappings,
             grpc_parametros: self.grpc_parametros,
             debug: self.debug,
+            compress: self.compress,
+            api_url: self.api_url,
+            driver: self.driver,
         })
     }
 }

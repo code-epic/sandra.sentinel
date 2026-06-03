@@ -15,6 +15,9 @@ pub struct ReconcilerConfig {
     pub field_mappings: Option<Vec<FieldMapping>>,
     pub grpc_parametros: String,
     pub debug: bool,
+    pub compress: bool,
+    pub api_url: Option<String>,
+    pub driver: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

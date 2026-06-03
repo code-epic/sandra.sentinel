@@ -1,9 +1,13 @@
+pub mod compress;
 pub mod correctos;
 pub mod detalle;
 pub mod errores;
+pub mod indice;
+pub mod manifest;
 pub mod metrics;
 pub mod nuevos;
 pub mod pendientes;
 pub mod postgres;
 pub mod postgres_insert;
 pub mod rechazos;
+pub mod staging_script;

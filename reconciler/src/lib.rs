@@ -11,7 +11,7 @@ use crate::compare::traits::{compare_values, FieldComparison};
 use crate::csv::index::build_index;
 use crate::csv::reader::mmap_file;
 use crate::error::Result;
-use crate::output::{correctos, metrics, postgres};
+use crate::output::{correctos, indice, manifest, metrics, postgres};
 use crate::types::{ConciliationResult, ConciliationStatus, FieldDiff, LiveMetrics, ReconcilerConfig};
 
 pub mod cli;
@@ -156,6 +156,8 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     let mut postgres_builder = postgres::PostgresBatchBuilder::new(field_names.clone());
     let mut postgres_insert_builder = output::postgres_insert::PostgresInsertBuilder::new(field_names.clone());
 
+    let mut indice_writer = indice::IndiceWriter::new(&config.grpc_parametros, field_names.clone());
+
     let metrics = Arc::new(LiveMetrics::new());
     let mut processed_cedulas = HashSet::new();
     let mut debug_records: Vec<Value> = Vec::new();
@@ -218,6 +220,8 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
                     if let Some(ref vals) = all_values {
                         postgres_builder.add(&cedula_raw, vals.clone());
                         rechazos_writer.write_record(&cedula_raw, vals)?;
+                        let linea = result.csv_line.as_deref().unwrap_or("");
+                        indice_writer.add(&cedula_norm, "rechazos", linea, vals);
                     }
                     errores_writer.write(&result)?;
                     detalle_writer.write_record(&result)?;
@@ -267,9 +271,35 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     detalle_writer.flush()?;
     postgres_builder.write_to_file(&format!("{}/postgres_batch.sql", out_dir))?;
     postgres_insert_builder.write_to_file(&format!("{}/insert_batch.sql", out_dir))?;
+    indice_writer.write_to_file(&format!("{}/indice_cedulas.json", out_dir))?;
+    output::staging_script::write_staging_script(out_dir, &config.grpc_parametros, config.delimiter)?;
 
     if config.debug && !debug_records.is_empty() {
         let _ = save_debug_sample(&debug_records, out_dir);
+    }
+
+    // PASO 5.5: ENVIAR INDICE A API
+    if let Some(ref api_url) = config.api_url {
+        let payload = indice_writer.build_payload();
+        let listado = payload["listado"].as_array().map(|a| a.len()).unwrap_or(0);
+        if listado > 0 {
+            if let Err(e) = output::indice::send_indice(api_url, &config.driver, &config.grpc_parametros, &payload).await {
+                eprintln!("[WARN] Error enviando indice a API: {}", e);
+            } else if !quiet {
+                println!("  API:             {} registros enviados a {}", listado, api_url);
+            }
+        }
+    }
+
+    // PASO 5.6: CONTAR LINEAS (antes de comprimir)
+    let line_counts = output::manifest::collect_line_counts(out_dir);
+
+    // PASO 5.7: COMPRESION ZSTD
+    if config.compress {
+        let comprimidos = output::compress::compress_outputs(out_dir)?;
+        if !quiet {
+            println!("  Comprimidos:     {} archivos .zst generados", comprimidos.len());
+        }
     }
 
     // PASO 6: REPORTE FINAL
@@ -278,7 +308,17 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     let pendientes_count = final_metrics.records_not_found_csv;
     let nuevos_count = final_metrics.records_not_found_grpc;
 
-    metrics::write_metrics_report(&format!("{}/reporte.txt", out_dir), &final_metrics, pendientes_count, nuevos_count)?;
+    metrics::write_metrics_report(&format!("{}/reporte.txt", out_dir), &final_metrics, pendientes_count, nuevos_count, config.compress)?;
+    manifest::write_manifest(
+        &format!("{}/manifest.json", out_dir),
+        &config,
+        &final_metrics,
+        pendientes_count,
+        nuevos_count,
+        csv_index.total_lines as u64,
+        total_stream_records as u64,
+        &line_counts,
+    )?;
 
     if !quiet {
         println!("\n{:-<80}", "");
