@@ -42,8 +42,10 @@ fi
 psql -X --echo-errors <<SQL
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS ${{TABLA}} (
-    cedula          TEXT,
+DROP TABLE IF EXISTS ${{TABLA}};
+
+CREATE TABLE ${{TABLA}} (
+    cedula          TEXT PRIMARY KEY,
     grado           TEXT,
     n_hijos         TEXT,
     f_ingreso       TEXT,
@@ -51,12 +53,11 @@ CREATE TABLE IF NOT EXISTS ${{TABLA}} (
     st_profesion    TEXT,
     anio_reconocido TEXT,
     mes_reconocido  TEXT,
-    dia_reconocido  TEXT
+    dia_reconocido  TEXT,
+    estatus         INTEGER DEFAULT 0
 );
 
 \copy ${{TABLA}}(cedula, grado, n_hijos, f_ingreso, f_ult_ascenso, st_profesion, anio_reconocido, mes_reconocido, dia_reconocido) FROM '${{ARCHIVO}}' WITH (FORMAT csv, DELIMITER '{delim}', HEADER true);
-
-CREATE INDEX IF NOT EXISTS idx_${{TABLA}}_cedula ON ${{TABLA}} (cedula);
 
 COMMIT;
 SQL
