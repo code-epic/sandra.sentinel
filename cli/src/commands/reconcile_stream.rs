@@ -14,6 +14,9 @@ pub async fn execute(
     skip_header: bool,
     field_mapping: Option<String>,
     quiet: bool,
+    compress: bool,
+    api_url: Option<String>,
+    driver: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let field_mapping_path = field_mapping.map(PathBuf::from);
 
@@ -29,6 +32,9 @@ pub async fn execute(
         field_mapping: field_mapping_path,
         quiet,
         debug: false,
+        compress,
+        api_url,
+        driver,
     };
 
     let config = args.into_config()?;

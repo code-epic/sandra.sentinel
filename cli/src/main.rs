@@ -214,6 +214,18 @@ enum Commands {
         /// Modo silencioso.
         #[arg(short, long)]
         quiet: bool,
+
+        /// Comprimir salidas con zstd.
+        #[arg(short = 'z', long)]
+        compress: bool,
+
+        /// URL de API para enviar el indice.
+        #[arg(long)]
+        api_url: Option<String>,
+
+        /// Driver de base de datos para la API.
+        #[arg(long, default_value = "MGDBA")]
+        driver: String,
     },
 
     /// Valida claves de acceso y permisos de seguridad (Herramienta admin).
@@ -277,6 +289,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             skip_header,
             field_mapping,
             quiet,
+            compress,
+            api_url,
+            driver,
         }) => {
             commands::reconcile_stream::execute(
                 csv_path.clone(),
@@ -289,6 +304,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 *skip_header,
                 field_mapping.clone(),
                 *quiet,
+                *compress,
+                api_url.clone(),
+                driver.clone(),
             ).await?;
         }
         Some(Commands::Validar { clave }) => {
