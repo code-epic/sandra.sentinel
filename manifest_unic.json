@@ -1,0 +1,48 @@
+{
+  "nombre": "NOMINA DE PRESTACIONES SOCIALES 2026",
+  "ciclo": "03MAR2026",
+  "descripcion": "Ejecución final con ajustes de decreto.",
+  "autor": "Sandra",
+  "fecha": "2026-01-31 08:00:00",
+  "version": "1.0.0",
+  "salida": {
+    "destino": "./public_web/www/cdn/bck-export/nomina/AGDAF2NW",
+    "compresion": false,
+    "nivel_compresion": 3,
+    "format_txt": "aporte",
+    "bancos": [
+      "0102"
+    ]
+  },
+  "aportes": {
+    "habilitar": true,
+    "monto_aprobado_garantias": 40000000.00,
+    "generar_apertura_con_aporte": true
+  },
+  "cargas": {
+    "IPSFA_CPrimasFunciones": {
+      "api_name": "IPSFA_CPrimasFunciones",
+      "sql_filter": "f.oidd = 81"
+    },
+    "IPSFA_CDirectiva": {
+      "api_name": "IPSFA_CDirectiva",
+      "sql_filter": "dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0"
+    },
+    "IPSFA_CConceptos": {
+      "api_name": "IPSFA_CConceptos",
+      "sql_filter": "directiva_sueldo_id = 81"
+    },
+    "IPSFA_CBase": {
+      "api_name": "IPSFA_CBase",
+      "sql_filter": "items.cedula='17818665'"
+    },
+    "IPSFA_CBeneficiarios": {
+      "api_name": "IPSFA_CBeneficiarios",
+      "sql_filter": "cedula='17818665'"
+    },
+    "IPSFA_CMovimientos": {
+      "api_name": "IPSFA_CMovimientos",
+      "sql_filter": "WHERE cedula='17818665'"
+    }
+  }
+}

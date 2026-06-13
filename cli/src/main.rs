@@ -95,6 +95,10 @@ enum Commands {
         /// Activa mensajes de debug para depuración.
         #[arg(short = 'd', long = "debug")]
         debug: bool,
+
+        /// Exporta resultados como JSON array a stdout sin generar archivos.
+        #[arg(long)]
+        json: bool,
     },
 
     /// Compara archivos CSV para conciliación bancaria.
@@ -251,8 +255,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             manifest,
             tipo,
             debug,
+            json,
         }) => {
-            commands::start::execute(*execute, *log, *sensors, manifest.clone(), (*tipo).into(), *debug).await?;
+            commands::start::execute(*execute, *log, *sensors, manifest.clone(), (*tipo).into(), *debug, *json).await?;
         }
         Some(Commands::Conciliate {
             comparison,

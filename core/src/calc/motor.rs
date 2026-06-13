@@ -149,6 +149,7 @@ impl SentinelEngine {
 
         // Familiares
         scope.push("numero_hijos", base.n_hijos as i64);
+        scope.push("n_hijos", base.n_hijos as i64); // alias
 
         scope.push("st_profesionalizacion", base.st_profesion as i64);
 

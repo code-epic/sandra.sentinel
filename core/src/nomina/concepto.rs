@@ -142,6 +142,7 @@ impl EjecutorConceptos {
         scope.push("antiguedad", base.antiguedad as i64);
         scope.push("tiempo_servicio", base.antiguedad as i64);
         scope.push("numero_hijos", base.n_hijos as i64);
+        scope.push("n_hijos", base.n_hijos as i64); // alias
         scope.push("grado_id", base.grado_id as i64);
         scope.push("componente_id", base.componente_id as i64);
 

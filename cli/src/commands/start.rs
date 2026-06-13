@@ -7,6 +7,9 @@ use sandra_core::model::Manifiesto;
 
 use chrono;
 
+#[cfg(unix)]
+use std::os::unix::io::AsRawFd;
+
 fn path_relative(full_path: &str, destino: &str) -> String {
     if destino == "." || destino.is_empty() {
         std::path::Path::new(full_path)
@@ -21,6 +24,32 @@ fn path_relative(full_path: &str, destino: &str) -> String {
     }
 }
 
+/// Redondea todos los valores numéricos flotantes a 2 decimales
+/// en un árbol JSON, sin afectar enteros (i64/u64) ni otros tipos.
+fn redondear_valores(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Number(n) if n.is_f64() => {
+            if let Some(f) = n.as_f64() {
+                let formatted = format!("{:.2}", f);
+                if let Ok(num) = serde_json::from_str::<serde_json::Number>(&formatted) {
+                    *value = serde_json::Value::Number(num);
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr.iter_mut() {
+                redondear_valores(v);
+            }
+        }
+        serde_json::Value::Object(obj) => {
+            for v in obj.values_mut() {
+                redondear_valores(v);
+            }
+        }
+        _ => {}
+    }
+}
+
 pub async fn execute(
     execute: bool,
     log: bool,
@@ -28,7 +57,29 @@ pub async fn execute(
     manifest_path: Option<String>,
     tipo: TipoNomina,
     debug: bool,
+    json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // ─── SILENCIAR STDOUT EN MODO JSON ───
+    // Redirige fd 1 a /dev/null para que ningún println! del core o del CLI
+    // aparezca en pantalla. Se restaura justo antes de imprimir el JSON.
+    #[cfg(unix)]
+    let mut _saved_stdout: Option<std::os::unix::io::RawFd> = None;
+    #[cfg(not(unix))]
+    let _saved_stdout = ();
+    if json {
+        #[cfg(unix)]
+        {
+            let devnull = std::fs::File::create("/dev/null")
+                .map_err(|e| format!("No se pudo abrir /dev/null: {}", e))?;
+            let null_fd = devnull.as_raw_fd();
+            _saved_stdout = Some(unsafe { libc::dup(1) });
+            if _saved_stdout.unwrap() < 0 {
+                return Err("Error salvando descriptor de stdout".into());
+            }
+            unsafe { libc::dup2(null_fd, 1) };
+        }
+    }
+
     // Guardar flag de debug globalmente para usar en otros modulos
     if debug {
         std::env::set_var("SANDRA_DEBUG", "1");
@@ -91,16 +142,28 @@ pub async fn execute(
         let start = std::time::Instant::now();
         match system.kernel.ejecutar_ciclo_carga(tipo).await {
             Ok(_) => {
+                // Restaurar stdout si estábamos en modo JSON
+                #[cfg(unix)]
+                if json {
+                    if let Some(fd) = _saved_stdout.take() {
+                        unsafe { libc::dup2(fd, 1) };
+                        unsafe { libc::close(fd) };
+                    }
+                }
+
                 let duration = start.elapsed();
 
-                // --- RESUMEN FINAL ---
-                println!("\n{:=<80}", "");
-                println!("{:^80}", "RESUMEN FINAL DE EJECUCIÓN");
-                println!("{:=<80}", "");
-
                 let len = system.kernel.beneficiarios.len();
-                println!("  {:<25} : {:>10} Beneficiarios", "Total Procesado", len);
-                println!("  {:<25} : {:>10.2?}", "Tiempo Total", duration);
+
+                if !json {
+                    // --- RESUMEN FINAL ---
+                    println!("\n{:=<80}", "");
+                    println!("{:^80}", "RESUMEN FINAL DE EJECUCIÓN");
+                    println!("{:=<80}", "");
+
+                    println!("  {:<25} : {:>10} Beneficiarios", "Total Procesado", len);
+                    println!("  {:<25} : {:>10.2?}", "Tiempo Total", duration);
+                }
 
                 if len > 0 {
                     // Obtener configuración de salida
@@ -109,10 +172,21 @@ pub async fn execute(
                     let comprimir = system.kernel.config.salida.compresion;
                     let nivel = system.kernel.config.salida.nivel_compresion;
 
-                    // Vector para almacenar resultados y generar manifest
-                    let mut resultados_export: Vec<exportador::ResultadoExport> = Vec::new();
+                    if json {
+                        // Exportar resultados como JSON array a stdout sin generar archivos
+                        let mut json_value = serde_json::to_value(
+                            &system.kernel.beneficiarios,
+                        )
+                        .map_err(|e| format!("Error serializando JSON: {}", e))?;
+                        redondear_valores(&mut json_value);
+                        let serialized = serde_json::to_string_pretty(&json_value)
+                            .map_err(|e| format!("Error serializando JSON: {}", e))?;
+                        println!("{}", serialized);
+                    } else {
+                        // Vector para almacenar resultados y generar manifest
+                        let mut resultados_export: Vec<exportador::ResultadoExport> = Vec::new();
 
-                    // Determinar tipo de nómina como string
+                        // Determinar tipo de nómina como string
                     let tipo_str = match tipo {
                         sandra_core::tipos::TipoNomina::Npr => "npr",
                         sandra_core::tipos::TipoNomina::Nact => "nact",
@@ -425,18 +499,31 @@ pub async fn execute(
                             eprintln!("    └─ [ERROR] {}", e);
                         }
                     }
+                    }  // fin modo JSON
+
                 }
 
-                // Generar reporte final de telemetría
+                // Generar reporte final de telemetría (siempre, incluso en modo JSON)
                 telemetria::generate_report(&destino);
-                println!(
-                    "  {:<25} : {:>10} ({})",
-                    "Reporte Sensores", "GENERADO",
-                    path_relative(&format!("{}/sandra_metrics_report.txt", &destino), &destino)
-                );
-                println!("{:=<80}\n", "");
+                if !json {
+                    println!(
+                        "  {:<25} : {:>10} ({})",
+                        "Reporte Sensores", "GENERADO",
+                        path_relative(&format!("{}/sandra_metrics_report.txt", &destino), &destino)
+                    );
+                    println!("{:=<80}\n", "");
+                }
             }
             Err(e) => {
+                // Restaurar stdout si estábamos en modo JSON
+                #[cfg(unix)]
+                if json {
+                    if let Some(fd) = _saved_stdout.take() {
+                        unsafe { libc::dup2(fd, 1) };
+                        unsafe { libc::close(fd) };
+                    }
+                }
+
                 let msg = format!("Error crítico en el ciclo de carga: {}", e);
                 eprintln!("\n{:=<80}", "");
                 eprintln!(">>> ABORTO CRÍTICO DEL SISTEMA <<<");
