@@ -152,6 +152,7 @@ impl SentinelEngine {
         scope.push("n_hijos", base.n_hijos as i64); // alias
 
         scope.push("st_profesionalizacion", base.st_profesion as i64);
+        scope.push("st_profesion", base.st_profesion as i64); // alias
 
         // Ascenso
         scope.push("no_ascenso", base.st_no_ascenso as i64);

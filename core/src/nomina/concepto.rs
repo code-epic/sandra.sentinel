@@ -145,6 +145,8 @@ impl EjecutorConceptos {
         scope.push("n_hijos", base.n_hijos as i64); // alias
         scope.push("grado_id", base.grado_id as i64);
         scope.push("componente_id", base.componente_id as i64);
+        scope.push("st_profesion", base.st_profesion as i64);
+        scope.push("st_profesionalizacion", base.st_profesion as i64);
 
         if let Some(calculos) = &base.calculos {
             for (key, value) in calculos {

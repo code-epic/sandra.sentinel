@@ -33,7 +33,7 @@ pub fn procesar_registro_base(base: &mut Base, directivas: &Vec<Directiva>) {
     }
 
     // 2. Determinar y asignar Sueldo Base
-    if let Some(sueldo) = obtener_sueldo_base(base.grado_id, tiempo.anos, directivas) {
+    if let Some(sueldo) = obtener_sueldo_base(base.grado_id, base.antiguedad_grado, directivas) {
         if is_debug() {
             eprintln!("[DEBUG]   -> Sueldo base asignado: {}", sueldo);
         }

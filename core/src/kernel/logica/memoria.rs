@@ -102,7 +102,7 @@ pub struct Directiva {
     pub grado: String, // Ej: "SARGENTO SEGUNDO"
 
     // Factores de Cálculo
-    #[serde(default, deserialize_with = "deserialize_any_to_u32")]
+    #[serde(default, deserialize_with = "deserialize_any_to_u32", alias = "anio")]
     pub antiguedad: u32, // Años de servicio necesarios
 
     #[serde(
@@ -120,15 +120,6 @@ pub struct Directiva {
         alias = "unidad_tributaria"
     )]
     pub unidad_tributaria: f64,
-
-    // Metadatos
-    #[serde(
-        default,
-        deserialize_with = "deserialize_any_to_u32",
-        alias = "anio",
-        alias = "vigencia"
-    )]
-    pub anio: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
