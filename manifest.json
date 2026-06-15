@@ -34,7 +34,7 @@
     },
     "IPSFA_CBase": {
       "api_name": "IPSFA_CBase",
-      "sql_filter": "status_id = 201"
+      "sql_filter": "items.status_id = 201"
     },
     "IPSFA_CBeneficiarios": {
       "api_name": "IPSFA_CBeneficiarios",

@@ -990,6 +990,7 @@ fn generar_headers_nomina(
         headers.push("garantias".to_string());
         headers.push("dias_adicionales".to_string());
         headers.push("deposito_banco".to_string());
+        headers.push("saldo_disponible".to_string());
         headers.push("no_depositado_banco".to_string());
         headers.push("deposito_aa".to_string());
         headers.push("anticipo".to_string());
@@ -1128,6 +1129,7 @@ fn generar_registro_nomina(
         record.push(format!("{:.2}", b.base.garantias));
         record.push(format!("{:.2}", b.base.dias_adicionales));
         record.push(format!("{:.2}", b.base.deposito_banco));
+        record.push(format!("{:.2}", b.base.saldo_disponible));
         record.push(format!("{:.2}", b.base.no_depositado_banco));
         record.push(format!("{:.2}", b.movimientos.deposito_aa));
         record.push(format!("{:.2}", b.movimientos.anticipo));
@@ -1253,6 +1255,7 @@ fn es_campo_fijo(campo: &str) -> bool {
             | "garantias"
             | "dias_adicionales"
             | "deposito_banco"
+            | "saldo_disponible"
             | "no_depositado_banco"
             | "deposito_aa"
             | "anticipo"

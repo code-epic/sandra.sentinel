@@ -228,6 +228,7 @@ mod tests {
             dias_adicionales: 0.0,
             no_depositado_banco: 0.0,
             deposito_banco: 0.0,
+            saldo_disponible: 0.0,
             garantia_original: 0.0,
             garantia_anticipo: 0.0,
             factor_aplicado: 0.0,

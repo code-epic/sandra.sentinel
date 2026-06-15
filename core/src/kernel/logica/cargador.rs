@@ -346,8 +346,14 @@ impl Cargador {
                             if let Some(movs_encontrados) = map_mov.get(&item.cedula) {
                                 if let Some(ultimo_mov) = movs_encontrados.last() {
                                     item.movimientos = ultimo_mov.clone();
-                                    // Copiar deposito banco al base
-                                    item.base.deposito_banco = ultimo_mov.finiquito_capital_banco;
+                                    // Copiar deposito banco al base (tipo 3: deposito_aa)
+                                    item.base.deposito_banco = ultimo_mov.deposito_aa;
+                                    // Calcular saldo_disponible = (deposito_banco - anticipo_neto) + deposito_garantias
+                                    let anticipo_neto = ultimo_mov.anticipo - ultimo_mov.reverso_orden_pago_anticipo;
+                                    item.base.saldo_disponible = (item.base.deposito_banco - anticipo_neto) + ultimo_mov.deposito_de_garantias;
+                                    if item.base.saldo_disponible < 0.0 {
+                                        item.base.saldo_disponible = 0.0;
+                                    }
                                 }
                             }
 
