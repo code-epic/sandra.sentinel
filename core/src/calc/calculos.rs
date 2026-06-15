@@ -229,6 +229,7 @@ mod tests {
             no_depositado_banco: 0.0,
             deposito_banco: 0.0,
             saldo_disponible: 0.0,
+            diferencia_asignacion: 0.0,
             garantia_original: 0.0,
             garantia_anticipo: 0.0,
             factor_aplicado: 0.0,

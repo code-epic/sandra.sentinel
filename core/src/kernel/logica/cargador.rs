@@ -354,6 +354,11 @@ impl Cargador {
                                     if item.base.saldo_disponible < 0.0 {
                                         item.base.saldo_disponible = 0.0;
                                     }
+                                    // Calcular diferencia_asignacion = AA - deposito_banco - deposito_dias_adicionales - deposito_garantias
+                                    item.base.diferencia_asignacion = item.base.asignacion_antiguedad
+                                        - item.base.deposito_banco
+                                        - ultimo_mov.deposito_de_dias_adicionales
+                                        - ultimo_mov.deposito_de_garantias;
                                 }
                             }
 
