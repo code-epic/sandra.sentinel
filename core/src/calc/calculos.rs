@@ -1,6 +1,13 @@
 use crate::kernel::logica::memoria::{Base, Movimiento};
 use chrono::{Datelike, NaiveDate};
 
+/// Redondea un valor flotante a 2 decimales (centésimas).
+/// Se aplica en cada paso intermedio de la cadena de cálculo para evitar
+/// acumulación de errores de punto flotante.
+pub fn redondear_dos(valor: f64) -> f64 {
+    (valor * 100.0).round() / 100.0
+}
+
 pub fn generar_calculos(
     bases: &mut [Base],
     movimientos: &[Movimiento],
@@ -19,29 +26,29 @@ pub fn generar_calculos(
             .as_ref()
             .map(|c| c.values().sum::<f64>())
             .unwrap_or(0.0);
-        base.sueldo_mensual = base.sueldo_base + prima_total;
+        base.sueldo_mensual = redondear_dos(base.sueldo_base + prima_total);
 
         // 2. Alicuota Aguinaldo
-        base.aguinaldos = calcular_alicuota_aguinaldo(base.sueldo_mensual, f_retiro);
+        base.aguinaldos = redondear_dos(calcular_alicuota_aguinaldo(base.sueldo_mensual, f_retiro));
 
         // 3. Alicuota Vacaciones
         let (vacaciones, dias_vac) =
             calcular_alicuota_vacaciones(base.sueldo_mensual, f_retiro, tiempo_servicio);
-        base.vacaciones = vacaciones;
+        base.vacaciones = redondear_dos(vacaciones);
         base.dia_vacaciones = dias_vac;
 
         // 4. Sueldo Integral = Sueldo Mensual + Vacaciones + Aguinaldos
-        base.sueldo_integral = base.sueldo_mensual + base.vacaciones + base.aguinaldos;
+        base.sueldo_integral = redondear_dos(base.sueldo_mensual + base.vacaciones + base.aguinaldos);
 
         // 5. Asignacion Antiguedad = Sueldo Integral * Tiempo de Servicio
-        base.asignacion_antiguedad = base.sueldo_integral * tiempo_servicio as f64;
+        base.asignacion_antiguedad = redondear_dos(base.sueldo_integral * tiempo_servicio as f64);
 
         // 6. Garantias = (Sueldo Integral / 30) * 15
-        base.garantias = (base.sueldo_integral / 30.0) * 15.0;
+        base.garantias = redondear_dos((base.sueldo_integral / 30.0) * 15.0);
         base.garantia_original = base.garantias;
 
         // 7. Dias Adicionales
-        base.dias_adicionales = calcular_dias_adicionales(base.sueldo_mensual, tiempo_servicio);
+        base.dias_adicionales = redondear_dos(calcular_dias_adicionales(base.sueldo_mensual, tiempo_servicio));
 
         // 8. Deposito banco ya viene seteado desde la fusion en Beneficiario
         // Solo si no se estableció, usamos 0
@@ -58,7 +65,7 @@ pub fn generar_calculos(
         if no_depositado < 0.0 {
             no_depositado = 0.0;
         }
-        base.no_depositado_banco = (no_depositado * 100.0).round() / 100.0;
+        base.no_depositado_banco = redondear_dos(no_depositado);
     }
 
     // Segunda pasada: distribución exacta de garantías con anticipo

@@ -179,7 +179,7 @@ impl Cargador {
 
                     // 2. Calcular Total Asignaciones
                     let sum_primas: f64 = valores.values().sum();
-                    base.total_asignaciones = base.sueldo_base + sum_primas;
+                    base.total_asignaciones = crate::calc::calculos::redondear_dos(base.sueldo_base + sum_primas);
 
                     // Integridad: Si tiene sueldo pero 0 primas, es sospechoso
                     if base.sueldo_base > 0.0 && sum_primas == 0.0 {
@@ -354,11 +354,14 @@ impl Cargador {
                                     if item.base.saldo_disponible < 0.0 {
                                         item.base.saldo_disponible = 0.0;
                                     }
+                                    item.base.saldo_disponible = crate::calc::calculos::redondear_dos(item.base.saldo_disponible);
                                     // Calcular diferencia_asignacion = AA - deposito_banco - deposito_dias_adicionales - deposito_garantias
-                                    item.base.diferencia_asignacion = item.base.asignacion_antiguedad
+                                    item.base.diferencia_asignacion = crate::calc::calculos::redondear_dos(
+                                        item.base.asignacion_antiguedad
                                         - item.base.deposito_banco
                                         - ultimo_mov.deposito_de_dias_adicionales
-                                        - ultimo_mov.deposito_de_garantias;
+                                        - ultimo_mov.deposito_de_garantias
+                                    );
                                 }
                             }
 

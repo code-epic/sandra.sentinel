@@ -124,7 +124,10 @@ impl SentinelEngine {
                         }
                     };
 
-                    // 3. Inyectar resultado como variable para siguientes fórmulas
+                    // 3. Redondear a 2 decimales para evitar propagación de errores
+                    let resultado = (resultado * 100.0).round() / 100.0;
+
+                    // 4. Inyectar resultado como variable para siguientes fórmulas
                     scope.push(formula.codigo.clone(), resultado);
 
                     // Guardar resultado

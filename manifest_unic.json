@@ -34,15 +34,15 @@
     },
     "IPSFA_CBase": {
       "api_name": "IPSFA_CBase",
-      "sql_filter": "items.cedula='20178906'"
+      "sql_filter": "items.cedula='5726284'"
     },
     "IPSFA_CBeneficiarios": {
       "api_name": "IPSFA_CBeneficiarios",
-      "sql_filter": "cedula='20178906'"
+      "sql_filter": "cedula='5726284'"
     },
     "IPSFA_CMovimientos": {
       "api_name": "IPSFA_CMovimientos",
-      "sql_filter": "WHERE cedula='20178906'"
+      "sql_filter": "WHERE cedula='5726284'"
     }
   }
 }
