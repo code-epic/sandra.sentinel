@@ -311,7 +311,7 @@ impl Perceptron {
         let monto_aprobado = config_ref.aportes.monto_aprobado_garantias;
 
         self.beneficiarios = c_ben
-            .cargar_beneficiarios(&self.base, &self.movimientos, monto_aprobado)
+            .cargar_beneficiarios(&self.base, &self.movimientos, monto_aprobado, &self.directiva)
             .await?;
 
         // ---------------------------------------------------------------------

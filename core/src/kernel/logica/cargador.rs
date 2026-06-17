@@ -234,6 +234,7 @@ impl Cargador {
         bases: &Vec<Base>,
         movimientos: &Vec<Movimiento>,
         monto_aprobado_garantias: f64,
+        directivas: &Vec<Directiva>,
     ) -> Result<Vec<Beneficiario>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBeneficiarios";
         // println!("    > Iniciando carga FUSIONADA para: '{}'", funcion);
@@ -394,6 +395,25 @@ impl Cargador {
                 results.len(),
                 &format!("Lotes: {}", chunks),
             );
+
+            // --- RECÁLCULO DE ANTIGÜEDAD CON F_RETIRO ---
+            // Si el beneficiario tiene f_retiro, copiarlo a la Base para que
+            // calcular_tiempo_servicio lo use como fecha tope en vez de hoy.
+            // Luego reprocesar antigüedad, antigüedad_grado, sueldo_base
+            // y todos los cálculos derivados (asignacion_antiguedad, etc.)
+            for ben in results.iter_mut() {
+                if let Some(ref fr) = ben.f_retiro {
+                    ben.base.f_retiro = Some(fr.clone());
+                    // Reprocesar: antiguedad, antiguedad_grado, sueldo_base
+                    crate::calc::procesar_registro_base(&mut ben.base, directivas);
+                    // Re-ejecutar cálculos de nómina con antigüedad corregida
+                    crate::calc::calculos::generar_calculos(
+                        std::slice::from_mut(&mut ben.base),
+                        movimientos,
+                        0.0,
+                    );
+                }
+            }
 
             // APLICAR DISTRIBUCIÓN DE GARANTÍAS (después de fusión completa)
             if monto_aprobado_garantias > 0.0 {

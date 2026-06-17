@@ -6,7 +6,7 @@
   "fecha": "2026-01-31 08:00:00",
   "version": "1.0.0",
   "salida": {
-    "destino": "./public_web/www/cdn/bck-export/nomina/AGDAF2NW",
+    "destino": "./out",
     "compresion": false,
     "nivel_compresion": 3,
     "format_txt": "aporte",
@@ -22,27 +22,27 @@
   "cargas": {
     "IPSFA_CPrimasFunciones": {
       "api_name": "IPSFA_CPrimasFunciones",
-      "sql_filter": "f.oidd = 81"
+      "sql_filter": "f.oidd = 75"
     },
     "IPSFA_CDirectiva": {
       "api_name": "IPSFA_CDirectiva",
-      "sql_filter": "dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0"
+      "sql_filter": "dd.directiva_sueldo_id = 75 and dd.sueldo_base > 0"
     },
     "IPSFA_CConceptos": {
       "api_name": "IPSFA_CConceptos",
-      "sql_filter": "directiva_sueldo_id = 81"
+      "sql_filter": "directiva_sueldo_id = 75"
     },
     "IPSFA_CBase": {
       "api_name": "IPSFA_CBase",
-      "sql_filter": "items.cedula='5726284'"
+      "sql_filter": "items.cedula='9734990'"
     },
     "IPSFA_CBeneficiarios": {
       "api_name": "IPSFA_CBeneficiarios",
-      "sql_filter": "cedula='5726284'"
+      "sql_filter": "cedula='9734990'"
     },
     "IPSFA_CMovimientos": {
       "api_name": "IPSFA_CMovimientos",
-      "sql_filter": "WHERE cedula='5726284'"
+      "sql_filter": "WHERE cedula='9734990'"
     }
   }
 }
