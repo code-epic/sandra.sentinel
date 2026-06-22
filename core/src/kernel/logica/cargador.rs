@@ -349,6 +349,19 @@ impl Cargador {
                                     item.movimientos = ultimo_mov.clone();
                                     // Copiar deposito banco al base (tipo 3: deposito_aa)
                                     item.base.deposito_banco = ultimo_mov.deposito_aa;
+                                    // depositado_en_banco = capital_banco + garantias (tipo 3 + tipo 32)
+                                    item.base.depositado_en_banco = ultimo_mov.deposito_aa + ultimo_mov.deposito_de_garantias;
+                                    // total_aportados = capital_banco + garantias + dias_adicionales (tipo 3 + tipo 32 + tipo 31)
+                                    let total_aportado = ultimo_mov.deposito_aa
+                                        + ultimo_mov.deposito_de_garantias
+                                        + ultimo_mov.deposito_de_dias_adicionales;
+                                    item.base.total_aportados = total_aportado;
+                                    // porcentaje_cancelado = (total_aportados / asignacion_antiguedad) * 100
+                                    item.base.porcentaje_cancelado = if item.base.asignacion_antiguedad > 0.0 {
+                                        (total_aportado / item.base.asignacion_antiguedad) * 100.0
+                                    } else {
+                                        0.0
+                                    };
                                     // Calcular saldo_disponible = (deposito_banco - anticipo_neto) + deposito_garantias
                                     let anticipo_neto = ultimo_mov.anticipo - ultimo_mov.reverso_orden_pago_anticipo;
                                     item.base.saldo_disponible = (item.base.deposito_banco - anticipo_neto) + ultimo_mov.deposito_de_garantias;

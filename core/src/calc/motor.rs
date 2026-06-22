@@ -145,6 +145,7 @@ impl SentinelEngine {
 
         // Sueldo y Datos Básicos
         scope.push("sueldo_base", base.sueldo_base);
+        scope.push("monto_nominal", base.sueldo_base);
         // Convertimos a i64 para compatibilidad con rangos de Rhai (ej: 1..=antiguedad)
         // Convertimos a i64 para compatibilidad con rangos de Rhai
         scope.push("antiguedad", base.antiguedad as i64); // Ahora usamos los años de servicio, no el monto
