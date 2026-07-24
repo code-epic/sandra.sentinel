@@ -120,6 +120,21 @@ pub struct Directiva {
         alias = "unidad_tributaria"
     )]
     pub unidad_tributaria: f64,
+
+    #[serde(
+        default,
+        deserialize_with = "deserialize_string_to_f64",
+        alias = "s_minimo",
+        alias = "salario_minimo"
+    )]
+    pub salario_minimo: f64,
+
+    #[serde(
+        default,
+        deserialize_with = "deserialize_string_to_f64",
+        alias = "monto_nominal"
+    )]
+    pub monto_nominal: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -217,7 +232,6 @@ pub struct Base {
     #[serde(default, alias = "patrones")]
     pub patterns: String,
 
-    // Campos calculados (No obligatorios en JSON)
     #[serde(default, alias = "fecha_retiro")]
     pub f_retiro: Option<String>,
 
@@ -227,6 +241,15 @@ pub struct Base {
         alias = "sueldo"
     )]
     pub sueldo_base: f64,
+
+    #[serde(default)]
+    pub unidad_tributaria: f64,
+
+    #[serde(default)]
+    pub salario_minimo: f64,
+
+    #[serde(default)]
+    pub monto_nominal: f64,
 
     #[serde(
         default,
@@ -489,6 +512,9 @@ impl Default for Base {
             patterns: String::new(),
             f_retiro: None,
             sueldo_base: 0.0,
+            unidad_tributaria: 0.0,
+            salario_minimo: 0.0,
+            monto_nominal: 0.0,
             total_asignaciones: 0.0,
             antiguedad: 0,
             antiguedad_grado: 0,

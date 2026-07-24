@@ -22,7 +22,7 @@
   "cargas": {
     "IPSFA_CPrimasFunciones": {
       "api_name": "IPSFA_CPrimasFunciones",
-      "sql_filter": "f.oidd = 81"
+      "sql_filter": "f.oidd = 81 and pd.grado_id=52 "
     },
     "IPSFA_CDirectiva": {
       "api_name": "IPSFA_CDirectiva",

@@ -32,12 +32,18 @@ pub fn procesar_registro_base(base: &mut Base, directivas: &Vec<Directiva>) {
         );
     }
 
-    // 2. Determinar y asignar Sueldo Base
-    if let Some(sueldo) = obtener_sueldo_base(base.grado_id, base.antiguedad_grado, directivas) {
+    // 2. Determinar y asignar Sueldo Base y variables de directiva
+    if let Some(directiva) = obtener_directiva(base.grado_id, base.antiguedad_grado, directivas) {
         if is_debug() {
-            eprintln!("[DEBUG]   -> Sueldo base asignado: {}", sueldo);
+            eprintln!(
+                "[DEBUG]   -> Sueldo base asignado: {}",
+                directiva.sueldo_base
+            );
         }
-        base.sueldo_base = sueldo;
+        base.sueldo_base = directiva.sueldo_base;
+        base.unidad_tributaria = directiva.unidad_tributaria;
+        base.salario_minimo = directiva.salario_minimo;
+        base.monto_nominal = directiva.monto_nominal;
     } else {
         if is_debug() {
             eprintln!(
@@ -127,15 +133,15 @@ pub fn calcular_tiempo_servicio(base: &Base) -> TiempoServicio {
     restar_fechas(f_ingreso_defecto, f_retiro, f_ascenso)
 }
 
-/// Busca el sueldo en la Directiva según Grado y Tiempo de Servicio
-pub fn obtener_sueldo_base(
+/// Busca la Directiva según Grado y Tiempo de Servicio
+pub fn obtener_directiva<'a>(
     grado_id: u32,
     anos_servicio: u32,
-    directivas: &Vec<Directiva>,
-) -> Option<f64> {
+    directivas: &'a Vec<Directiva>,
+) -> Option<&'a Directiva> {
     if is_debug() {
         eprintln!(
-            "[DEBUG] obtener_sueldo_base: grado_id={}, anos_servicio={}",
+            "[DEBUG] obtener_directiva: grado_id={}, anos_servicio={}",
             grado_id, anos_servicio
         );
     }
@@ -192,7 +198,7 @@ pub fn obtener_sueldo_base(
         }
     }
 
-    candidato.map(|d| d.sueldo_base)
+    candidato.copied()
 }
 
 // --- UTILIDADES ---

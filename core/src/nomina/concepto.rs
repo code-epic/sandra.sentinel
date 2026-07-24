@@ -132,6 +132,11 @@ impl EjecutorConceptos {
         let mut scope = Scope::new();
 
         scope.push("sueldo_base", base.sueldo_base);
+        scope.push("monto_nominal", base.monto_nominal);
+        scope.push("unidad_tributaria", base.unidad_tributaria);
+        scope.push("ut", base.unidad_tributaria);
+        scope.push("salario_minimo", base.salario_minimo);
+        scope.push("s_minimo", base.salario_minimo);
         scope.push("sueldo_mensual", base.sueldo_mensual);
         scope.push("sueldo_integral", base.sueldo_integral);
         scope.push("asignacion_antiguedad", base.asignacion_antiguedad);
