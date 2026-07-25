@@ -12,6 +12,7 @@ pub struct FormulaFnx {
     pub codigo_rhai: String,
     pub ast: AST,
     pub activo: Arc<AtomicBool>, // Bandera global thread-safe para desactivar si falla
+    pub monto_nominal: f64,
 }
 
 pub struct SentinelEngine {
@@ -46,6 +47,7 @@ impl SentinelEngine {
                         codigo_rhai: raw,
                         ast,
                         activo: Arc::new(AtomicBool::new(true)),
+                        monto_nominal: prima.monto_nominal,
                     });
                 }
                 Err(e) => {
@@ -92,6 +94,9 @@ impl SentinelEngine {
                     if !formula.activo.load(Ordering::Relaxed) {
                         continue;
                     }
+
+                    // Inyectar el monto nominal propio de esta fórmula
+                    scope.push("monto_nominal", formula.monto_nominal);
 
                     // Evaluar AST
                     let resultado: f64 = match self
@@ -145,7 +150,6 @@ impl SentinelEngine {
 
         // Sueldo y Datos Básicos
         scope.push("sueldo_base", base.sueldo_base);
-        scope.push("monto_nominal", base.monto_nominal);
         scope.push("unidad_tributaria", base.unidad_tributaria);
         scope.push("ut", base.unidad_tributaria);
         scope.push("salario_minimo", base.salario_minimo);

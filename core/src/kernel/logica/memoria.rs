@@ -128,13 +128,6 @@ pub struct Directiva {
         alias = "salario_minimo"
     )]
     pub salario_minimo: f64,
-
-    #[serde(
-        default,
-        deserialize_with = "deserialize_string_to_f64",
-        alias = "monto_nominal"
-    )]
-    pub monto_nominal: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -247,9 +240,6 @@ pub struct Base {
 
     #[serde(default)]
     pub salario_minimo: f64,
-
-    #[serde(default)]
-    pub monto_nominal: f64,
 
     #[serde(
         default,
@@ -514,7 +504,6 @@ impl Default for Base {
             sueldo_base: 0.0,
             unidad_tributaria: 0.0,
             salario_minimo: 0.0,
-            monto_nominal: 0.0,
             total_asignaciones: 0.0,
             antiguedad: 0,
             antiguedad_grado: 0,
@@ -548,14 +537,17 @@ where
 {
     let v: serde_json::Value = serde::Deserialize::deserialize(deserializer)?;
     match v {
-        serde_json::Value::String(s) => s.parse::<f64>().map_err(serde::de::Error::custom),
-        serde_json::Value::Number(n) => n
-            .as_f64()
-            .ok_or_else(|| serde::de::Error::custom("Invalid number")),
+        serde_json::Value::String(s) => {
+            let s_clean = s.trim().replace(',', ".");
+            if s_clean.is_empty() {
+                Ok(0.0)
+            } else {
+                Ok(s_clean.parse::<f64>().unwrap_or(0.0))
+            }
+        },
+        serde_json::Value::Number(n) => Ok(n.as_f64().unwrap_or(0.0)),
         serde_json::Value::Null => Ok(0.0),
-        _ => Err(serde::de::Error::custom(
-            "Expected string or number for f64",
-        )),
+        _ => Ok(0.0), // En vez de fallar y perder todo el batch, asumimos 0.0
     }
 }
 
@@ -758,6 +750,14 @@ pub struct PrimaFuncion {
 
     #[serde(default)]
     pub formula: String,
+
+    #[serde(
+        default,
+        deserialize_with = "deserialize_string_to_f64",
+        alias = "monto_nominal",
+        alias = "monto"
+    )]
+    pub monto_nominal: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

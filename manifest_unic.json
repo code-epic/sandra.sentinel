@@ -21,28 +21,28 @@
   },
   "cargas": {
     "IPSFA_CPrimasFunciones": {
-      "api_name": "IPSFA_CPrimasFunciones",
-      "sql_filter": "f.oidd = 81 and pd.grado_id=52 "
+      "api_name": "IPSFA_CPrimasFuncionesID",
+      "sql_filter": "48,1060 "
     },
     "IPSFA_CDirectiva": {
       "api_name": "IPSFA_CDirectiva",
-      "sql_filter": "dd.directiva_sueldo_id = 81 and dd.sueldo_base > 0"
+      "sql_filter": "dd.directiva_sueldo_id = 48 and dd.sueldo_base > 0"
     },
     "IPSFA_CConceptos": {
       "api_name": "IPSFA_CConceptos",
-      "sql_filter": "directiva_sueldo_id = 81"
+      "sql_filter": "directiva_sueldo_id = 48"
     },
     "IPSFA_CBase": {
       "api_name": "IPSFA_CBase",
-      "sql_filter": "items.cedula='20255371'"
+      "sql_filter": "items.cedula='12435212'"
     },
     "IPSFA_CBeneficiarios": {
       "api_name": "IPSFA_CBeneficiarios",
-      "sql_filter": "cedula='20255371'"
+      "sql_filter": "cedula='12435212'"
     },
     "IPSFA_CMovimientos": {
       "api_name": "IPSFA_CMovimientos",
-      "sql_filter": "WHERE cedula='20255371'"
+      "sql_filter": "WHERE cedula='12435212'"
     }
   }
 }

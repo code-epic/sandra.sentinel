@@ -223,7 +223,6 @@ mod tests {
             sueldo_base: 500.0,
             unidad_tributaria: 0.0,
             salario_minimo: 0.0,
-            monto_nominal: 0.0,
             total_asignaciones: 0.0,
             antiguedad: 10,
             antiguedad_grado: 5,

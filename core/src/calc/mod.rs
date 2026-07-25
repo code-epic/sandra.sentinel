@@ -43,7 +43,6 @@ pub fn procesar_registro_base(base: &mut Base, directivas: &Vec<Directiva>) {
         base.sueldo_base = directiva.sueldo_base;
         base.unidad_tributaria = directiva.unidad_tributaria;
         base.salario_minimo = directiva.salario_minimo;
-        base.monto_nominal = directiva.monto_nominal;
     } else {
         if is_debug() {
             eprintln!(
