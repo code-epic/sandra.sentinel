@@ -12,7 +12,7 @@ pub struct TiempoServicio {
     pub antiguedad_grados: u32,
 }
 
-fn is_debug() -> bool {
+pub fn is_debug() -> bool {
     std::env::var("SANDRA_DEBUG").is_ok()
 }
 

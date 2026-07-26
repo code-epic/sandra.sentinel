@@ -235,6 +235,7 @@ impl Cargador {
         movimientos: &Vec<Movimiento>,
         monto_aprobado_garantias: f64,
         directivas: &Vec<Directiva>,
+        engine: &crate::calc::motor::SentinelEngine,
     ) -> Result<Vec<Beneficiario>, Box<dyn std::error::Error + Send + Sync>> {
         let funcion = "IPSFA_CBeneficiarios";
         // println!("    > Iniciando carga FUSIONADA para: '{}'", funcion);
@@ -368,6 +369,12 @@ impl Cargador {
                                     if item.base.saldo_disponible < 0.0 {
                                         item.base.saldo_disponible = 0.0;
                                     }
+                                    // Regla de presentación heredada de PHP: en reportes/consultas de
+                                    // beneficiarios con fecha de retiro (fallecido/retirado) el saldo
+                                    // disponible se muestra como 0 para reflejar que no puede disponerse.
+                                    if item.f_retiro.as_deref().unwrap_or("").trim() != "" {
+                                        item.base.saldo_disponible = 0.0;
+                                    }
                                     item.base.saldo_disponible = crate::calc::calculos::redondear_dos(item.base.saldo_disponible);
                                     // Calcular diferencia_asignacion = AA - deposito_banco - deposito_dias_adicionales - deposito_garantias
                                     item.base.diferencia_asignacion = crate::calc::calculos::redondear_dos(
@@ -413,18 +420,62 @@ impl Cargador {
             // Si el beneficiario tiene f_retiro, copiarlo a la Base para que
             // calcular_tiempo_servicio lo use como fecha tope en vez de hoy.
             // Luego reprocesar antigüedad, antigüedad_grado, sueldo_base
-            // y todos los cálculos derivados (asignacion_antiguedad, etc.)
-            for ben in results.iter_mut() {
+            // y recalcular primas Rhai y todos los cálculos derivados.
+            let mut affected_indices = Vec::new();
+            let mut affected_bases = Vec::new();
+            for (idx, ben) in results.iter_mut().enumerate() {
                 if let Some(ref fr) = ben.f_retiro {
                     ben.base.f_retiro = Some(fr.clone());
-                    // Reprocesar: antiguedad, antiguedad_grado, sueldo_base
+                    // Reprocesar: antiguedad, antigüedad_grado, sueldo_base
                     crate::calc::procesar_registro_base(&mut ben.base, directivas);
-                    // Re-ejecutar cálculos de nómina con antigüedad corregida
-                    crate::calc::calculos::generar_calculos(
-                        std::slice::from_mut(&mut ben.base),
-                        movimientos,
-                        0.0,
+                    affected_indices.push(idx);
+                    affected_bases.push(ben.base.clone());
+                }
+            }
+
+            if !affected_bases.is_empty() {
+                // Recalcular primas Rhai con la antigüedad corregida (limitada por f_retiro)
+                let nuevos_calculos: std::collections::HashMap<String, std::collections::HashMap<String, f64>> =
+                    engine.calcular_primas(&affected_bases).into_iter().collect();
+
+                // Fusionar nuevos cálculos de primas en las bases afectadas
+                for (i, _idx) in affected_indices.iter().enumerate() {
+                    if let Some(calcs) = nuevos_calculos.get(&affected_bases[i].patterns) {
+                        affected_bases[i].calculos = Some(calcs.clone());
+                        let sum_primas = calcs.values().sum::<f64>();
+                        affected_bases[i].total_asignaciones =
+                            crate::calc::calculos::redondear_dos(affected_bases[i].sueldo_base + sum_primas);
+                    }
+                }
+
+                // Recalcular valores derivados (sueldo_mensual, integral, garantías, etc.)
+                crate::calc::calculos::generar_calculos(&mut affected_bases, movimientos, 0.0);
+
+                // Recalcular campos que dependen de asignacion_antiguedad con el valor corregido
+                // (diferencia_asignacion y porcentaje_cancelado se calcularon en la fase de fusión
+                // con la antigüedad original, por lo que deben refrescarse tras corregir f_retiro).
+                for (i, &idx) in affected_indices.iter().enumerate() {
+                    let mov = &results[idx].movimientos;
+                    let base = &mut affected_bases[i];
+
+                    base.diferencia_asignacion = crate::calc::calculos::redondear_dos(
+                        base.asignacion_antiguedad
+                            - base.deposito_banco
+                            - mov.deposito_de_dias_adicionales
+                            - mov.deposito_de_garantias,
                     );
+
+                    if base.asignacion_antiguedad > 0.0 {
+                        base.porcentaje_cancelado =
+                            (base.total_aportados / base.asignacion_antiguedad) * 100.0;
+                    } else {
+                        base.porcentaje_cancelado = 0.0;
+                    }
+                }
+
+                // Fusionar bases recalculadas de vuelta a los beneficiarios
+                for (i, &idx) in affected_indices.iter().enumerate() {
+                    results[idx].base = std::mem::take(&mut affected_bases[i]);
                 }
             }
 

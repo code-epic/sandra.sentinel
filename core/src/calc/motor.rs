@@ -5,6 +5,11 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+/// DEBUG de fórmulas bajo demanda.
+/// Controlado por el flag CLI --debug (o variable de entorno SANDRA_DEBUG=1).
+/// Marcador: [DEBUG-PTS] — grep con: grep "DEBUG-PTS" /tmp/debug_prima.log
+/// IMPORTANTE: redirigir stderr: comando 2>/tmp/debug_prima.log
+
 #[derive(Debug, Clone)]
 pub struct FormulaFnx {
     pub codigo: String,
@@ -72,6 +77,53 @@ impl SentinelEngine {
 
     /// Calcula las primas para un lote de beneficiarios en paralelo
     pub fn calcular_primas(&self, base: &Vec<Base>) -> Vec<(String, HashMap<String, f64>)> {
+        // ═══════════════════════════════════════════════════════════════════
+        //  [DEBUG-PTS] Bajo demanda: activar con flag --debug (SANDRA_DEBUG=1)
+        //  Grepear con: grep "DEBUG-PTS" (redirigir stderr con 2>&1)
+        // ═══════════════════════════════════════════════════════════════════
+        let debug_formula = crate::calc::is_debug();
+        if debug_formula {
+            eprintln!("[DEBUG-PTS] ============================================================");
+            eprintln!("[DEBUG-PTS] MOTOR INICIALIZADO — {} fórmulas cargadas", self.formulas.len());
+            for (idx, f) in self.formulas.iter().enumerate() {
+                let activo_str = if f.activo.load(Ordering::Relaxed) { "ACT" } else { "OFF" };
+                eprintln!(
+                    "[DEBUG-PTS]   #{} [{}] {} -> {} (monto_nom={:.2})",
+                    idx, activo_str, f.codigo, f.nombre, f.monto_nominal
+                );
+            }
+            eprintln!("[DEBUG-PTS] ============================================================");
+
+            // Buscar la fórmula prima_tiemposervicio por código O por índice (#5)
+            let pts_idx = self.formulas.iter().position(|f| {
+                f.codigo == "prima_tiemposervicio"
+                    || f.codigo.to_lowercase().contains("tiempo")
+                    || f.nombre == "P_TIEMPOSERVICIO"
+                    || f.nombre.to_lowercase().contains("tiempo")
+            });
+            if let Some(idx) = pts_idx {
+                let f = &self.formulas[idx];
+                eprintln!("[DEBUG-PTS] ============================================================");
+                eprintln!("[DEBUG-PTS] FÓRMULA prima_tiemposervicio ENCONTRADA en índice #{}", idx);
+                eprintln!("[DEBUG-PTS] CODIGO:        {}", f.codigo);
+                eprintln!("[DEBUG-PTS] NOMBRE:        {}", f.nombre);
+                eprintln!("[DEBUG-PTS] MONTO_NOMINAL: {:.2}", f.monto_nominal);
+                eprintln!("[DEBUG-PTS] ACTIVO:        {}", f.activo.load(Ordering::Relaxed));
+                eprintln!("[DEBUG-PTS] ─── FÓRMULA RHAI COMPLETA ───");
+                eprintln!("[DEBUG-PTS] |{}", f.codigo_rhai);
+                eprintln!("[DEBUG-PTS] ───────────────────────────────");
+                eprintln!("[DEBUG-PTS] ============================================================");
+            } else {
+                eprintln!("[DEBUG-PTS] ⚠️  prima_tiemposervicio NO ENCONTRADA en las {} fórmulas", self.formulas.len());
+                // Fallback: mostrar la última fórmula (índice 5 o len-1)
+                if let Some(last) = self.formulas.last() {
+                    eprintln!("[DEBUG-PTS] Última fórmula: {} -> {} | Rhai: {}",
+                        last.codigo, last.nombre, last.codigo_rhai);
+                }
+            }
+            eprintln!("[DEBUG-PTS] ============================================================");
+        }
+
         // Rayon: Iterador paralelo
         base.par_iter()
             .map(|ben| {
@@ -94,6 +146,44 @@ impl SentinelEngine {
                     if !formula.activo.load(Ordering::Relaxed) {
                         continue;
                     }
+
+                    // ── [DEBUG-PTS] Bajo demanda: activar con flag --debug ──────
+                    // Match: por código exacto, por nombre, o por índice (#5 = última fórmula típica)
+                    let es_pts = debug_formula && (
+                        formula.codigo == "prima_tiemposervicio"
+                        || formula.codigo.to_lowercase().contains("tiempo")
+                        || formula.nombre == "P_TIEMPOSERVICIO"
+                        || formula.nombre.to_lowercase().contains("tiempo")
+                    );
+
+                    if es_pts {
+                        eprintln!();
+                        eprintln!("[DEBUG-PTS] ═══════════════════════════════════════════════════════");
+                        eprintln!("[DEBUG-PTS] ANTES DE EVALUAR — beneficiario: {}", ben.patterns);
+                        eprintln!("[DEBUG-PTS] CODIGO:        {}", formula.codigo);
+                        eprintln!("[DEBUG-PTS] NOMBRE:        {}", formula.nombre);
+                        eprintln!("[DEBUG-PTS] MONTO_NOMINAL: {:.2}", formula.monto_nominal);
+                        eprintln!("[DEBUG-PTS] ─── FÓRMULA RHAI COMPLETA ───");
+                        eprintln!("[DEBUG-PTS] |{}", formula.codigo_rhai);
+                        eprintln!("[DEBUG-PTS] ───────────────────────────────");
+                        eprintln!("[DEBUG-PTS] ─── VARIABLES DEL SCOPE (valores reales) ───");
+                        eprintln!("[DEBUG-PTS] antiguedad:         {} (u32→i64={})", ben.antiguedad, ben.antiguedad as i64);
+                        eprintln!("[DEBUG-PTS] tiempo_servicio:    {} (mismo que antiguedad)", ben.antiguedad as i64);
+                        eprintln!("[DEBUG-PTS] sueldo_base:        {:.2}", ben.sueldo_base);
+                        eprintln!("[DEBUG-PTS] unidad_tributaria:  {:.2}", ben.unidad_tributaria);
+                        eprintln!("[DEBUG-PTS] salario_minimo:     {:.2}", ben.salario_minimo);
+                        eprintln!("[DEBUG-PTS] grado_id:           {}", ben.grado_id);
+                        eprintln!("[DEBUG-PTS] componente_id:      {}", ben.componente_id);
+                        eprintln!("[DEBUG-PTS] n_hijos:            {}", ben.n_hijos);
+                        eprintln!("[DEBUG-PTS] st_profesion:       {:.2}", ben.st_profesion);
+                        eprintln!("[DEBUG-PTS] st_no_ascenso:      {}", ben.st_no_ascenso);
+                        eprintln!("[DEBUG-PTS] antiguedad_grado:   {}", ben.antiguedad_grado);
+                        eprintln!("[DEBUG-PTS] fecha_ingreso:      {:?}", ben.fecha_ingreso);
+                        eprintln!("[DEBUG-PTS] f_ult_ascenso:      {:?}", ben.f_ult_ascenso);
+                        eprintln!("[DEBUG-PTS] f_retiro:           {:?}", ben.f_retiro);
+                        eprintln!("[DEBUG-PTS] ═══════════════════════════════════════════════════════");
+                    }
+                    // ── FIN DEBUG PTS ──────────────────────────────────────────
 
                     // Inyectar el monto nominal propio de esta fórmula
                     scope.push("monto_nominal", formula.monto_nominal);
@@ -131,6 +221,24 @@ impl SentinelEngine {
 
                     // 3. Redondear a 2 decimales para evitar propagación de errores
                     let resultado = (resultado * 100.0).round() / 100.0;
+
+                    // ── [DEBUG-PTS] DESPUÉS DE EVALUAR ─────────────────────────
+                    if es_pts {
+                        eprintln!();
+                        eprintln!("[DEBUG-PTS] ═══════════════════════════════════════════════════════");
+                        eprintln!("[DEBUG-PTS] DESPUÉS DE EVALUAR — beneficiario: {}", ben.patterns);
+                        eprintln!("[DEBUG-PTS] CODIGO:        {}", formula.codigo);
+                        eprintln!("[DEBUG-PTS] RESULTADO CRUDO (antes de r2d2): {:.6}", resultado);
+                        eprintln!("[DEBUG-PTS] RESULTADO R2D2 (round 2 dec):   {:.2}", resultado);
+                        if formula.monto_nominal > 0.0 {
+                            let pct = (resultado / formula.monto_nominal) * 100.0;
+                            eprintln!("[DEBUG-PTS] PORCENTAJE:    {:.4}% = ({:.2} / {:.2}) * 100", pct, resultado, formula.monto_nominal);
+                        }
+                        eprintln!("[DEBUG-PTS] SCOPE post-eval — {} será visible para fórmulas siguientes", formula.codigo);
+                        eprintln!("[DEBUG-PTS] ═══════════════════════════════════════════════════════");
+                        eprintln!();
+                    }
+                    // ── FIN DEBUG PTS ──────────────────────────────────────────
 
                     // 4. Inyectar resultado como variable para siguientes fórmulas
                     scope.push(formula.codigo.clone(), resultado);
