@@ -482,7 +482,8 @@ pub fn exportar_aporte_y_apertura_txt(
 
     for b in beneficiaries {
         let m = &b.movimientos;
-        let total_mov = m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo;
+        // El campo anticipo ya fue neteado con reverso_orden_pago_anticipo en cargador.rs.
+        let total_mov = m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias;
         if total_mov > 0.0 {
             aporte.push(b.clone());
         } else {

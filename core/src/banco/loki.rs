@@ -21,7 +21,7 @@ impl GeneradorLoki {
         campo.edocivil = Some("S".to_string());
 
         let m = &b.movimientos;
-        let monto_raw = (m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo)
+        let monto_raw = (m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias)
             * porcentaje
             / 100.0;
         campo.monto = monto_raw;
@@ -71,7 +71,7 @@ impl GeneradorLoki {
         for b in beneficiarios {
             let m = &b.movimientos;
             let tiene_mov =
-                m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo > 0.0;
+                m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias > 0.0;
 
             if !tiene_mov {
                 let linea = Self::generar_linea_apertura(b, porcentaje);
@@ -79,7 +79,7 @@ impl GeneradorLoki {
                     writeln!(archivo, "{}", linea)?;
                     cantidad += 1;
                     let monto_mov =
-                        m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias + m.reverso_orden_pago_anticipo;
+                        m.finiquito_capital_banco + m.anticipo + m.deposito_de_dias_adicionales + m.deposito_de_garantias;
                     suma_total += monto_mov * porcentaje / 100.0;
                 }
             }

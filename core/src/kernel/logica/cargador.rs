@@ -377,6 +377,9 @@ impl Cargador {
                             if let Some(movs_encontrados) = map_mov.get(&item.cedula) {
                                 if let Some(ultimo_mov) = movs_encontrados.last() {
                                     item.movimientos = ultimo_mov.clone();
+                                    // El anticipo se netea restando el reverso de orden de pago de anticipo.
+                                    // La columna reverso_orden_pago_anticipo conserva su valor original.
+                                    item.movimientos.anticipo -= item.movimientos.reverso_orden_pago_anticipo;
                                     // Copiar deposito banco al base (tipo 3: deposito_aa)
                                     item.base.deposito_banco = ultimo_mov.deposito_aa;
                                     // depositado_en_banco = capital_banco + garantias (tipo 3 + tipo 32)
@@ -393,7 +396,8 @@ impl Cargador {
                                         0.0
                                     };
                                     // Calcular saldo_disponible = (deposito_banco - anticipo_neto) + deposito_garantias
-                                    let anticipo_neto = ultimo_mov.anticipo - ultimo_mov.reverso_orden_pago_anticipo;
+                                    // Ahora item.movimientos.anticipo ya es el valor neto (anticipo - reverso_orden_pago_anticipo).
+                                    let anticipo_neto = item.movimientos.anticipo;
                                     item.base.saldo_disponible = (item.base.deposito_banco - anticipo_neto) + ultimo_mov.deposito_de_garantias;
                                     if item.base.saldo_disponible < 0.0 {
                                         item.base.saldo_disponible = 0.0;
