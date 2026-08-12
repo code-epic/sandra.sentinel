@@ -169,6 +169,7 @@ impl Cargador {
 
             let mut match_count = 0;
             let mut count_zeros_primas = 0;
+            let mut count_hijos_sin_prima = 0;
             for base in &mut results {
                 // Usamos patterns como clave de enlace según tu lógica en motor.rs
                 if let Some(valores) = mapa_calculos.get(&base.patterns) {
@@ -185,6 +186,24 @@ impl Cargador {
                     if base.sueldo_base > 0.0 && sum_primas == 0.0 {
                         count_zeros_primas += 1;
                     }
+
+                    // Integridad: Si tiene hijos pero no hay prima asociada
+                    let calculos = base.calculos.as_ref().unwrap();
+                    if base.n_hijos > 0
+                        && !calculos.contains_key("prima_hijos")
+                        && !calculos.contains_key("prima_descendencia")
+                    {
+                        count_hijos_sin_prima += 1;
+                        if count_hijos_sin_prima <= 5 {
+                            logger::log_warn(
+                                "CALCULO",
+                                &format!(
+                                    "Beneficiario con n_hijos={} pero sin fórmula prima_hijos/prima_descendencia (patterns={}).",
+                                    base.n_hijos, base.patterns
+                                ),
+                            );
+                        }
+                    }
                 }
             }
 
@@ -194,6 +213,16 @@ impl Cargador {
                     &format!(
                         "Atención: {} registros tienen Sueldo Base pero 0.0 en Primas calculadas.",
                         count_zeros_primas
+                    ),
+                );
+            }
+
+            if count_hijos_sin_prima > 0 {
+                logger::log_warn(
+                    "CALCULO",
+                    &format!(
+                        "Atención: {} registros tienen hijos (n_hijos>0) pero no se encontró fórmula prima_hijos/prima_descendencia.",
+                        count_hijos_sin_prima
                     ),
                 );
             }

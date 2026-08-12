@@ -8,6 +8,13 @@ pub fn redondear_dos(valor: f64) -> f64 {
     (valor * 100.0).round() / 100.0
 }
 
+/// Trunca un valor flotante a 2 decimales (centésimas), descartando los decimales
+/// posteriores sin redondear. Se usa para la columna de anticipos para reflejar
+/// exactamente el valor almacenado en base de datos (ej. 0.295 -> 0.29).
+pub fn truncar_dos(valor: f64) -> f64 {
+    (valor * 100.0).trunc() / 100.0
+}
+
 pub fn generar_calculos(
     bases: &mut [Base],
     movimientos: &[Movimiento],
@@ -150,7 +157,9 @@ fn calcular_alicuota_aguinaldo(sueldo_mensual: f64, f_retiro: &str) -> f64 {
         120
     };
 
-    ((dias as f64 * sueldo_mensual) / 30.0) / 12.0
+    // Orden de operaciones alineado con PHP: (sueldo / 30) * (dias / 12)
+    // Evita diferencias de 0.01 por punto flotante vs ((dias * sueldo) / 30) / 12
+    (sueldo_mensual / 30.0) * (dias as f64 / 12.0)
 }
 
 fn calcular_alicuota_vacaciones(
@@ -180,7 +189,9 @@ fn calcular_alicuota_vacaciones(
         50
     };
 
-    let monto = ((dias as f64 * sueldo_mensual) / 30.0) / 12.0;
+    // Orden de operaciones alineado con PHP: (sueldo / 30) * (dias / 12)
+    // Evita diferencias de 0.01 por punto flotante vs ((dias * sueldo) / 30) / 12
+    let monto = (sueldo_mensual / 30.0) * (dias as f64 / 12.0);
     (monto, dias)
 }
 
@@ -289,6 +300,82 @@ mod tests {
         for b in &bases {
             assert!(b.factor_aplicado > 0.0);
         }
+    }
+
+    #[test]
+    fn test_sueldo_mensual_no_duplica_prima_descendencia() {
+        // Escenario: prima_descendencia existe, prima_hijos NO existe en calculos
+        // sueldo_mensual debe ser sueldo_base + prima_descendencia (una sola vez)
+        let mut base = create_test_base();
+        base.sueldo_base = 1000.0;
+        base.n_hijos = 2;
+        let mut calculos = std::collections::HashMap::new();
+        calculos.insert("prima_descendencia".to_string(), 25.0);
+        base.calculos = Some(calculos);
+
+        let mut bases = [base];
+        let movimientos = vec![];
+
+        generar_calculos(&mut bases, &movimientos, 0.0);
+
+        // sueldo_mensual = 1000 + 25 = 1025 (NO 1050)
+        assert!(
+            (bases[0].sueldo_mensual - 1025.0).abs() < 0.01,
+            "sueldo_mensual debe ser 1025.0, fue {}",
+            bases[0].sueldo_mensual
+        );
+    }
+
+    #[test]
+    fn test_alicuota_vacaciones_coincide_con_php() {
+        // Caso reportado: sueldo_mensual=939.06, dias=50
+        // Con orden PHP: (939.06 / 30) * (50 / 12) = 130.43
+        // Con orden anterior: ((50 * 939.06) / 30) / 12 = 130.42
+        let mut base = create_test_base();
+        base.sueldo_base = 939.06;
+        base.calculos = Some(std::collections::HashMap::new());
+
+        let mut bases = [base];
+        let movimientos = vec![];
+
+        generar_calculos(&mut bases, &movimientos, 0.0);
+
+        assert!(
+            (bases[0].vacaciones - 130.43).abs() < 0.01,
+            "alicuota vacaciones debe ser 130.43, fue {}",
+            bases[0].vacaciones
+        );
+        assert_eq!(bases[0].dia_vacaciones, 50);
+    }
+
+    #[test]
+    fn test_alicuota_aguinaldo_coincide_con_php() {
+        // Caso límite: sueldo_mensual=939.06, dias=120
+        // Con orden PHP: (939.06 / 30) * (120 / 12) = 313.02
+        // Con orden anterior: ((120 * 939.06) / 30) / 12 = 313.01999999999998 -> 313.02
+        let mut base = create_test_base();
+        base.sueldo_base = 939.06;
+        base.calculos = Some(std::collections::HashMap::new());
+
+        let mut bases = [base];
+        let movimientos = vec![];
+
+        generar_calculos(&mut bases, &movimientos, 0.0);
+
+        assert!(
+            (bases[0].aguinaldos - 313.02).abs() < 0.01,
+            "alicuota aguinaldo debe ser 313.02, fue {}",
+            bases[0].aguinaldos
+        );
+    }
+
+    #[test]
+    fn test_truncar_dos_no_redondea() {
+        // Caso reportado: valor en BD 0.295 no debe redondear a 0.30, debe quedar en 0.29
+        assert!((truncar_dos(0.295) - 0.29).abs() < f64::EPSILON);
+        assert!((truncar_dos(1557.585) - 1557.58).abs() < 0.0001);
+        assert!((truncar_dos(0.30) - 0.30).abs() < f64::EPSILON);
+        assert!((truncar_dos(0.01) - 0.01).abs() < f64::EPSILON);
     }
 }
 

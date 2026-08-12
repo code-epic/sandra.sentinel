@@ -1,11 +1,29 @@
 use super::logger;
 use crate::banco::tipos::TipoArchivo;
+use crate::calc::calculos::truncar_dos;
 use crate::kernel::logica::memoria::Beneficiario;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+
+/// Busca un valor calculado por su clave, con fallback de prima_hijos -> prima_descendencia.
+fn obtener_valor_calculo(calculos: &Option<HashMap<String, f64>>, key: &str) -> f64 {
+    if let Some(map) = calculos {
+        if let Some(val) = map.get(key) {
+            return *val;
+        }
+        // Fallback: prima_hijos toma el valor de prima_descendencia (mismo concepto)
+        if key == "prima_hijos" {
+            if let Some(val) = map.get("prima_descendencia") {
+                return *val;
+            }
+        }
+    }
+    0.0
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfoArchivo {
@@ -168,12 +186,7 @@ pub fn exportar_nomina_csv(
 
     for b in beneficiarios {
         let get_calc = |key: &str| -> String {
-            if let Some(map) = &b.base.calculos {
-                if let Some(val) = map.get(key) {
-                    return format!("{:.2}", val);
-                }
-            }
-            "0.00".to_string()
+            format!("{:.2}", obtener_valor_calculo(&b.base.calculos, key))
         };
 
         wtr.write_record(&[
@@ -219,41 +232,41 @@ pub fn exportar_nomina_csv(
             &format!("{:.2}", b.base.asignacion_antiguedad),
             &format!("{:.2}", b.base.garantias),
             &format!("{:.2}", b.base.dias_adicionales),
-            &format!("{:.2}", b.base.deposito_banco),
-            &format!("{:.2}", b.base.depositado_en_banco),
-            &format!("{:.2}", b.base.total_aportados),
+            &format!("{:.2}", truncar_dos(b.base.deposito_banco)),
+            &format!("{:.2}", truncar_dos(b.base.depositado_en_banco)),
+            &format!("{:.2}", truncar_dos(b.base.total_aportados)),
             &format!("{:.2}", b.base.porcentaje_cancelado),
-            &format!("{:.2}", b.base.no_depositado_banco),
-            &format!("{:.2}", b.movimientos.deposito_aa),
-            &format!("{:.2}", b.movimientos.anticipo),
-            &format!("{:.2}", b.movimientos.embargo),
-            &format!("{:.2}", b.movimientos.embargo_ejecutado),
-            &format!("{:.2}", b.movimientos.calculo_aa),
-            &format!("{:.2}", b.movimientos.finiquito_capital_banco),
-            &format!("{:.2}", b.movimientos.finiquito_ajuste_intereses),
-            &format!("{:.2}", b.movimientos.finiquito_asignacion_cm),
-            &format!("{:.2}", b.movimientos.finiquito_asignacion_mas),
-            &format!("{:.2}", b.movimientos.finiquito_diferencia_aa),
-            &format!("{:.2}", b.movimientos.finiquito_ajuste_deuda),
-            &format!("{:.2}", b.movimientos.finiquito_recuperacion),
-            &format!("{:.2}", b.movimientos.reverso_finiquito_capital_banco),
-            &format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_intereses),
-            &format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_cm),
-            &format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_mas),
-            &format!("{:.2}", b.movimientos.reverso_finiquito_diferencia_aa),
-            &format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_deuda),
-            &format!("{:.2}", b.movimientos.reverso_finiquito_recuperacion),
-            &format!("{:.2}", b.movimientos.reverso_orden_pago_anticipo),
-            &format!("{:.2}", b.movimientos.reverso_orden_pago_generica),
-            &format!("{:.2}", b.movimientos.embargo_aa_ejecutado),
-            &format!("{:.2}", b.movimientos.comision_servicio),
-            &format!("{:.2}", b.movimientos.calculo_de_dias_adicionales),
-            &format!("{:.2}", b.movimientos.deposito_de_dias_adicionales),
-            &format!("{:.2}", b.movimientos.deposito_de_garantias),
-            &format!("{:.2}", b.movimientos.calculo_de_garantias),
-            &format!("{:.2}", b.movimientos.reverso_embargo_aa_ejecutado),
-            &format!("{:.2}", b.movimientos.monto_recuperado_activo),
-            &format!("{:.2}", b.movimientos.movimiento_inactivo_aa),
+            &format!("{:.2}", truncar_dos(b.base.no_depositado_banco)),
+            &format!("{:.2}", truncar_dos(b.movimientos.deposito_aa)),
+            &format!("{:.2}", truncar_dos(b.movimientos.anticipo)),
+            &format!("{:.2}", truncar_dos(b.movimientos.embargo)),
+            &format!("{:.2}", truncar_dos(b.movimientos.embargo_ejecutado)),
+            &format!("{:.2}", truncar_dos(b.movimientos.calculo_aa)),
+            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_capital_banco)),
+            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_intereses)),
+            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_cm)),
+            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_mas)),
+            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_diferencia_aa)),
+            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_deuda)),
+            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_recuperacion)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_capital_banco)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_intereses)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_cm)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_mas)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_diferencia_aa)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_deuda)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_recuperacion)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_anticipo)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_generica)),
+            &format!("{:.2}", truncar_dos(b.movimientos.embargo_aa_ejecutado)),
+            &format!("{:.2}", truncar_dos(b.movimientos.comision_servicio)),
+            &format!("{:.2}", truncar_dos(b.movimientos.calculo_de_dias_adicionales)),
+            &format!("{:.2}", truncar_dos(b.movimientos.deposito_de_dias_adicionales)),
+            &format!("{:.2}", truncar_dos(b.movimientos.deposito_de_garantias)),
+            &format!("{:.2}", truncar_dos(b.movimientos.calculo_de_garantias)),
+            &format!("{:.2}", truncar_dos(b.movimientos.reverso_embargo_aa_ejecutado)),
+            &format!("{:.2}", truncar_dos(b.movimientos.monto_recuperado_activo)),
+            &format!("{:.2}", truncar_dos(b.movimientos.movimiento_inactivo_aa)),
             &b.patterns,
         ])?;
     }
@@ -1074,12 +1087,7 @@ fn generar_registro_nomina(
     let mut record = Vec::new();
 
     let get_calc = |key: &str| -> String {
-        if let Some(map) = &b.base.calculos {
-            if let Some(val) = map.get(key) {
-                return format!("{:.2}", val);
-            }
-        }
-        "0.00".to_string()
+        format!("{:.2}", obtener_valor_calculo(&b.base.calculos, key))
     };
 
     record.push(b.cedula.clone());
@@ -1135,40 +1143,40 @@ fn generar_registro_nomina(
         record.push(format!("{:.2}", b.base.asignacion_antiguedad));
         record.push(format!("{:.2}", b.base.garantias));
         record.push(format!("{:.2}", b.base.dias_adicionales));
-        record.push(format!("{:.2}", b.base.deposito_banco));
-        record.push(format!("{:.2}", b.base.saldo_disponible));
-        record.push(format!("{:.2}", b.base.diferencia_asignacion));
-        record.push(format!("{:.2}", b.base.no_depositado_banco));
-        record.push(format!("{:.2}", b.movimientos.deposito_aa));
-        record.push(format!("{:.2}", b.movimientos.anticipo));
-        record.push(format!("{:.2}", b.movimientos.embargo));
-        record.push(format!("{:.2}", b.movimientos.embargo_ejecutado));
-        record.push(format!("{:.2}", b.movimientos.calculo_aa));
-        record.push(format!("{:.2}", b.movimientos.finiquito_capital_banco));
-        record.push(format!("{:.2}", b.movimientos.finiquito_ajuste_intereses));
-        record.push(format!("{:.2}", b.movimientos.finiquito_asignacion_cm));
-        record.push(format!("{:.2}", b.movimientos.finiquito_asignacion_mas));
-        record.push(format!("{:.2}", b.movimientos.finiquito_diferencia_aa));
-        record.push(format!("{:.2}", b.movimientos.finiquito_ajuste_deuda));
-        record.push(format!("{:.2}", b.movimientos.finiquito_recuperacion));
-        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_capital_banco));
-        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_intereses));
-        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_cm));
-        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_mas));
-        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_diferencia_aa));
-        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_deuda));
-        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_recuperacion));
-        record.push(format!("{:.2}", b.movimientos.reverso_orden_pago_anticipo));
-        record.push(format!("{:.2}", b.movimientos.reverso_orden_pago_generica));
-        record.push(format!("{:.2}", b.movimientos.embargo_aa_ejecutado));
-        record.push(format!("{:.2}", b.movimientos.comision_servicio));
-        record.push(format!("{:.2}", b.movimientos.calculo_de_dias_adicionales));
-        record.push(format!("{:.2}", b.movimientos.deposito_de_dias_adicionales));
-        record.push(format!("{:.2}", b.movimientos.deposito_de_garantias));
-        record.push(format!("{:.2}", b.movimientos.calculo_de_garantias));
-        record.push(format!("{:.2}", b.movimientos.reverso_embargo_aa_ejecutado));
-        record.push(format!("{:.2}", b.movimientos.monto_recuperado_activo));
-        record.push(format!("{:.2}", b.movimientos.movimiento_inactivo_aa));
+        record.push(format!("{:.2}", truncar_dos(b.base.deposito_banco)));
+        record.push(format!("{:.2}", truncar_dos(b.base.saldo_disponible)));
+        record.push(format!("{:.2}", truncar_dos(b.base.diferencia_asignacion)));
+        record.push(format!("{:.2}", truncar_dos(b.base.no_depositado_banco)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.deposito_aa)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.anticipo)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.embargo)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.embargo_ejecutado)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.calculo_aa)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_capital_banco)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_intereses)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_cm)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_mas)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_diferencia_aa)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_deuda)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_recuperacion)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_capital_banco)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_intereses)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_cm)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_mas)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_diferencia_aa)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_deuda)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_recuperacion)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_anticipo)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_generica)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.embargo_aa_ejecutado)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.comision_servicio)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.calculo_de_dias_adicionales)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.deposito_de_dias_adicionales)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.deposito_de_garantias)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.calculo_de_garantias)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_embargo_aa_ejecutado)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.monto_recuperado_activo)));
+        record.push(format!("{:.2}", truncar_dos(b.movimientos.movimiento_inactivo_aa)));
     }
 
     record.push(b.patterns.clone());
@@ -1381,5 +1389,52 @@ fn comprimir_y_guardar(
             hash_sha256_original: Some(hash_csv),
             compresion_aplicada: false,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_obtener_valor_calculo_directo() {
+        let mut calculos = HashMap::new();
+        calculos.insert("prima_descendencia".to_string(), 25.0);
+        let calculos = Some(calculos);
+
+        assert_eq!(obtener_valor_calculo(&calculos, "prima_descendencia"), 25.0);
+    }
+
+    #[test]
+    fn test_obtener_valor_calculo_fallback_prima_hijos() {
+        let mut calculos = HashMap::new();
+        calculos.insert("prima_descendencia".to_string(), 37.5);
+        let calculos = Some(calculos);
+
+        // Cuando no existe prima_hijos, debe tomar el valor de prima_descendencia
+        assert_eq!(obtener_valor_calculo(&calculos, "prima_hijos"), 37.5);
+    }
+
+    #[test]
+    fn test_obtener_valor_calculo_prima_hijos_precede_a_descendencia() {
+        let mut calculos = HashMap::new();
+        calculos.insert("prima_hijos".to_string(), 10.0);
+        calculos.insert("prima_descendencia".to_string(), 37.5);
+        let calculos = Some(calculos);
+
+        // Si ambos existen, prima_hijos debe usar su propio valor
+        assert_eq!(obtener_valor_calculo(&calculos, "prima_hijos"), 10.0);
+    }
+
+    #[test]
+    fn test_obtener_valor_calculo_no_existe() {
+        let calculos = Some(HashMap::new());
+        assert_eq!(obtener_valor_calculo(&calculos, "prima_inexistente"), 0.0);
+    }
+
+    #[test]
+    fn test_obtener_valor_calculo_sin_mapa() {
+        let calculos: Option<HashMap<String, f64>> = None;
+        assert_eq!(obtener_valor_calculo(&calculos, "prima_hijos"), 0.0);
     }
 }

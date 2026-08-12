@@ -285,3 +285,112 @@ impl SentinelEngine {
         // Esto es opcional, pero ayuda a la robustez
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel::logica::memoria::{Base, PrimaFuncion};
+
+    fn crear_base_test(n_hijos: u32, sueldo_base: f64, unidad_tributaria: f64) -> Base {
+        Base {
+            grado_id: 1,
+            componente_id: 1,
+            n_hijos,
+            fecha_ingreso: Some("2000-01-01".to_string()),
+            f_ult_ascenso: Some("2020-01-01".to_string()),
+            anio_reconocido: 0,
+            mes_reconocido: 0,
+            dia_reconocido: 0,
+            st_no_ascenso: 0,
+            st_profesion: 0.0,
+            patterns: format!("1-1-{}", n_hijos),
+            f_retiro: None,
+            sueldo_base,
+            unidad_tributaria,
+            salario_minimo: 0.0,
+            total_asignaciones: 0.0,
+            antiguedad: 10,
+            antiguedad_grado: 5,
+            calculos: None,
+            sueldo_mensual: 0.0,
+            aguinaldos: 0.0,
+            vacaciones: 0.0,
+            dia_vacaciones: 0,
+            sueldo_integral: 0.0,
+            asignacion_antiguedad: 0.0,
+            garantias: 0.0,
+            dias_adicionales: 0.0,
+            no_depositado_banco: 0.0,
+            deposito_banco: 0.0,
+            depositado_en_banco: 0.0,
+            total_aportados: 0.0,
+            porcentaje_cancelado: 0.0,
+            saldo_disponible: 0.0,
+            diferencia_asignacion: 0.0,
+            garantia_original: 0.0,
+            garantia_anticipo: 0.0,
+            factor_aplicado: 0.0,
+        }
+    }
+
+    fn crear_prima(codigo: &str, nombre: &str, formula: &str, monto_nominal: f64) -> PrimaFuncion {
+        PrimaFuncion {
+            codigo: codigo.to_string(),
+            nombre: nombre.to_string(),
+            descripcion: format!("Prueba {}", codigo),
+            formula: formula.to_string(),
+            monto_nominal,
+        }
+    }
+
+    #[test]
+    fn test_prima_descendencia_fija_por_hijo() {
+        let engine = SentinelEngine::new(vec![crear_prima(
+            "prima_descendencia",
+            "P_DESCENDECIA",
+            "12.50 * numero_hijos;",
+            0.0,
+        )]);
+
+        let base = crear_base_test(2, 500.0, 0.0);
+        let resultados = engine.calcular_primas(&vec![base]);
+
+        assert_eq!(resultados.len(), 1);
+        let (_, calculos) = resultados.into_iter().next().unwrap();
+        assert_eq!(calculos.get("prima_descendencia"), Some(&25.0));
+    }
+
+    #[test]
+    fn test_prima_descendencia_con_unidad_tributaria() {
+        let engine = SentinelEngine::new(vec![crear_prima(
+            "prima_descendencia",
+            "P_DESCENDECIA",
+            "monto_nominal * unidad_tributaria * numero_hijos;",
+            2.0,
+        )]);
+
+        let base = crear_base_test(3, 1000.0, 10.0);
+        let resultados = engine.calcular_primas(&vec![base]);
+
+        assert_eq!(resultados.len(), 1);
+        let (_, calculos) = resultados.into_iter().next().unwrap();
+        assert_eq!(calculos.get("prima_descendencia"), Some(&60.0));
+    }
+
+    #[test]
+    fn test_prima_descendencia_cero_sin_hijos() {
+        let engine = SentinelEngine::new(vec![crear_prima(
+            "prima_descendencia",
+            "P_DESCENDECIA",
+            "12.50 * numero_hijos;",
+            0.0,
+        )]);
+
+        let base = crear_base_test(0, 500.0, 0.0);
+        let resultados = engine.calcular_primas(&vec![base]);
+
+        assert_eq!(resultados.len(), 1);
+        let (_, calculos) = resultados.into_iter().next().unwrap();
+        assert_eq!(calculos.get("prima_descendencia"), Some(&0.0));
+    }
+}
