@@ -237,36 +237,36 @@ pub fn exportar_nomina_csv(
             &format!("{:.2}", truncar_dos(b.base.total_aportados)),
             &format!("{:.2}", b.base.porcentaje_cancelado),
             &format!("{:.2}", truncar_dos(b.base.no_depositado_banco)),
-            &format!("{:.2}", truncar_dos(b.movimientos.deposito_aa)),
-            &format!("{:.2}", truncar_dos(b.movimientos.anticipo)),
-            &format!("{:.2}", truncar_dos(b.movimientos.embargo)),
-            &format!("{:.2}", truncar_dos(b.movimientos.embargo_ejecutado)),
-            &format!("{:.2}", truncar_dos(b.movimientos.calculo_aa)),
-            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_capital_banco)),
-            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_intereses)),
-            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_cm)),
-            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_mas)),
-            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_diferencia_aa)),
-            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_deuda)),
-            &format!("{:.2}", truncar_dos(b.movimientos.finiquito_recuperacion)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_capital_banco)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_intereses)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_cm)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_mas)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_diferencia_aa)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_deuda)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_recuperacion)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_anticipo)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_generica)),
-            &format!("{:.2}", truncar_dos(b.movimientos.embargo_aa_ejecutado)),
-            &format!("{:.2}", truncar_dos(b.movimientos.comision_servicio)),
-            &format!("{:.2}", truncar_dos(b.movimientos.calculo_de_dias_adicionales)),
-            &format!("{:.2}", truncar_dos(b.movimientos.deposito_de_dias_adicionales)),
-            &format!("{:.2}", truncar_dos(b.movimientos.deposito_de_garantias)),
-            &format!("{:.2}", truncar_dos(b.movimientos.calculo_de_garantias)),
-            &format!("{:.2}", truncar_dos(b.movimientos.reverso_embargo_aa_ejecutado)),
-            &format!("{:.2}", truncar_dos(b.movimientos.monto_recuperado_activo)),
-            &format!("{:.2}", truncar_dos(b.movimientos.movimiento_inactivo_aa)),
+            &format!("{:.2}", b.movimientos.deposito_aa),
+            &format!("{:.2}", b.movimientos.anticipo),
+            &format!("{:.2}", b.movimientos.embargo),
+            &format!("{:.2}", b.movimientos.embargo_ejecutado),
+            &format!("{:.2}", b.movimientos.calculo_aa),
+            &format!("{:.2}", b.movimientos.finiquito_capital_banco),
+            &format!("{:.2}", b.movimientos.finiquito_ajuste_intereses),
+            &format!("{:.2}", b.movimientos.finiquito_asignacion_cm),
+            &format!("{:.2}", b.movimientos.finiquito_asignacion_mas),
+            &format!("{:.2}", b.movimientos.finiquito_diferencia_aa),
+            &format!("{:.2}", b.movimientos.finiquito_ajuste_deuda),
+            &format!("{:.2}", b.movimientos.finiquito_recuperacion),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_capital_banco),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_intereses),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_cm),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_mas),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_diferencia_aa),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_deuda),
+            &format!("{:.2}", b.movimientos.reverso_finiquito_recuperacion),
+            &format!("{:.2}", b.movimientos.reverso_orden_pago_anticipo),
+            &format!("{:.2}", b.movimientos.reverso_orden_pago_generica),
+            &format!("{:.2}", b.movimientos.embargo_aa_ejecutado),
+            &format!("{:.2}", b.movimientos.comision_servicio),
+            &format!("{:.2}", b.movimientos.calculo_de_dias_adicionales),
+            &format!("{:.2}", b.movimientos.deposito_de_dias_adicionales),
+            &format!("{:.2}", b.movimientos.deposito_de_garantias),
+            &format!("{:.2}", b.movimientos.calculo_de_garantias),
+            &format!("{:.2}", b.movimientos.reverso_embargo_aa_ejecutado),
+            &format!("{:.2}", b.movimientos.monto_recuperado_activo),
+            &format!("{:.2}", b.movimientos.movimiento_inactivo_aa),
             &b.patterns,
         ])?;
     }
@@ -1148,36 +1148,36 @@ fn generar_registro_nomina(
         record.push(format!("{:.2}", truncar_dos(b.base.saldo_disponible)));
         record.push(format!("{:.2}", truncar_dos(b.base.diferencia_asignacion)));
         record.push(format!("{:.2}", truncar_dos(b.base.no_depositado_banco)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.deposito_aa)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.anticipo)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.embargo)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.embargo_ejecutado)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.calculo_aa)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_capital_banco)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_intereses)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_cm)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_asignacion_mas)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_diferencia_aa)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_ajuste_deuda)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.finiquito_recuperacion)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_capital_banco)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_intereses)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_cm)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_asignacion_mas)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_diferencia_aa)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_ajuste_deuda)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_finiquito_recuperacion)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_anticipo)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_orden_pago_generica)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.embargo_aa_ejecutado)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.comision_servicio)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.calculo_de_dias_adicionales)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.deposito_de_dias_adicionales)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.deposito_de_garantias)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.calculo_de_garantias)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.reverso_embargo_aa_ejecutado)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.monto_recuperado_activo)));
-        record.push(format!("{:.2}", truncar_dos(b.movimientos.movimiento_inactivo_aa)));
+        record.push(format!("{:.2}", b.movimientos.deposito_aa));
+        record.push(format!("{:.2}", b.movimientos.anticipo));
+        record.push(format!("{:.2}", b.movimientos.embargo));
+        record.push(format!("{:.2}", b.movimientos.embargo_ejecutado));
+        record.push(format!("{:.2}", b.movimientos.calculo_aa));
+        record.push(format!("{:.2}", b.movimientos.finiquito_capital_banco));
+        record.push(format!("{:.2}", b.movimientos.finiquito_ajuste_intereses));
+        record.push(format!("{:.2}", b.movimientos.finiquito_asignacion_cm));
+        record.push(format!("{:.2}", b.movimientos.finiquito_asignacion_mas));
+        record.push(format!("{:.2}", b.movimientos.finiquito_diferencia_aa));
+        record.push(format!("{:.2}", b.movimientos.finiquito_ajuste_deuda));
+        record.push(format!("{:.2}", b.movimientos.finiquito_recuperacion));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_capital_banco));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_intereses));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_cm));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_asignacion_mas));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_diferencia_aa));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_ajuste_deuda));
+        record.push(format!("{:.2}", b.movimientos.reverso_finiquito_recuperacion));
+        record.push(format!("{:.2}", b.movimientos.reverso_orden_pago_anticipo));
+        record.push(format!("{:.2}", b.movimientos.reverso_orden_pago_generica));
+        record.push(format!("{:.2}", b.movimientos.embargo_aa_ejecutado));
+        record.push(format!("{:.2}", b.movimientos.comision_servicio));
+        record.push(format!("{:.2}", b.movimientos.calculo_de_dias_adicionales));
+        record.push(format!("{:.2}", b.movimientos.deposito_de_dias_adicionales));
+        record.push(format!("{:.2}", b.movimientos.deposito_de_garantias));
+        record.push(format!("{:.2}", b.movimientos.calculo_de_garantias));
+        record.push(format!("{:.2}", b.movimientos.reverso_embargo_aa_ejecutado));
+        record.push(format!("{:.2}", b.movimientos.monto_recuperado_activo));
+        record.push(format!("{:.2}", b.movimientos.movimiento_inactivo_aa));
     }
 
     record.push(b.patterns.clone());
