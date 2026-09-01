@@ -228,6 +228,13 @@ pub struct Base {
     #[serde(default, alias = "fecha_retiro")]
     pub f_retiro: Option<String>,
 
+    /// Fecha de retiro efectiva — fecha canónica de corte para cálculos
+    /// (antigüedad, tiempo de servicio, alicuotas). Cuando existe, tiene
+    /// prioridad sobre `f_retiro`. Se propaga desde `Beneficiario.f_retiro_efectiva`
+    /// durante la fase de fusión en `cargador.rs`.
+    #[serde(default, alias = "fecha_retiro_efectiva")]
+    pub f_retiro_efectiva: Option<String>,
+
     #[serde(
         default,
         deserialize_with = "deserialize_string_to_f64",
@@ -506,6 +513,7 @@ impl Default for Base {
             st_profesion: 0.0,
             patterns: String::new(),
             f_retiro: None,
+            f_retiro_efectiva: None,
             sueldo_base: 0.0,
             unidad_tributaria: 0.0,
             salario_minimo: 0.0,

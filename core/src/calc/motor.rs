@@ -305,6 +305,7 @@ mod tests {
             st_profesion: 0.0,
             patterns: format!("1-1-{}", n_hijos),
             f_retiro: None,
+            f_retiro_efectiva: None,
             sueldo_base,
             unidad_tributaria,
             salario_minimo: 0.0,

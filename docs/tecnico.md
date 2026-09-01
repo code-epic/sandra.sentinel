@@ -106,6 +106,8 @@ pub struct Base {
     pub componente_id: u32,
     pub fecha_ingreso: Option<String>,
     pub f_ult_ascenso: Option<String>,
+    pub f_retiro: Option<String>,          // Fecha de retiro
+    pub f_retiro_efectiva: Option<String>, // Fecha de retiro efectiva (fecha de corte canónica)
     pub antiguedad: u32,           // Tiempo de servicio calculado
     pub antiguedad_grado: u32,     // Tiempo en el grado
     pub st_no_ascenso: u32,
@@ -298,6 +300,45 @@ Asig_Antigüedad = SI × TS
 ```
 
 Donde TS = Tiempo de Servicio (años)
+
+#### Antigüedad en el Grado
+La antigüedad en el grado (`antiguedad_grados`) representa los **años completos**
+transcurridos desde el último ascenso hasta la fecha de corte.
+
+```
+antiguedad_grado = diferencia_calendario(f_ult_ascenso, fecha_corte).anos
+```
+
+Se calcula con diferencia **calendárica** (años/meses/días con préstamo de
+días/meses), NO dividiendo días entre 365.25. Esto evita truncamientos
+incorrectos en rangos exactos:
+
+| Rango | Días | División 365.25 (trunca) | Diferencia calendárica |
+|-------|------|--------------------------|------------------------|
+| 2009-07-05 → 2011-07-05 | 730 | 1.9986 → **1** ✗ | **2** ✓ |
+
+#### Fecha de Corte: `f_retiro_efectiva` con prioridad
+
+La fecha de corte canónica para todos los cálculos de tiempo (antigüedad total,
+antigüedad en el grado, alicuotas de aguinaldo y vacaciones) es
+`f_retiro_efectiva` **cuando existe**. La resolución de la fecha de corte es:
+
+```
+fecha_corte =
+    f_retiro_efectiva  (si existe y no está vacía)   ← prioridad
+  | f_retiro            (fallback / retrocompatibilidad)
+  | hoy                 (si ambas son null/vacías)
+```
+
+El campo `f_retiro_efectiva` se agregó al struct `Base` (con `#[serde(default)]`
+para retrocompatibilidad con datos antiguos) y se propaga desde
+`Beneficiario.f_retiro_efectiva` durante la fase de fusión en `cargador.rs`,
+junto con `f_retiro`.
+
+Esta política de fecha de corte se aplica de forma **consistente** en:
+
+- `calcular_tiempo_servicio` (`calc/mod.rs`): antigüedad total y antigüedad en el grado.
+- `generar_calculos` (`calc/calculos.rs`): alicuotas de aguinaldo y vacaciones que dependen del año de retiro.
 
 #### Garantías
 ```

@@ -24,8 +24,14 @@ pub fn generar_calculos(
     for base in bases.iter_mut() {
         let tiempo_servicio = base.antiguedad;
         let _tiempo_servicio_aux = calcular_tiempo_servicio_aux(tiempo_servicio);
-        let f_retiro = base.f_retiro.as_deref().unwrap_or("");
-        let _f_retiro_date = parsear_fecha(f_retiro);
+        // f_retiro_efectiva tiene prioridad como fecha de corte (retrocompat: fallback a f_retiro)
+        let fecha_corte_str = base
+            .f_retiro_efectiva
+            .as_deref()
+            .filter(|s| !s.trim().is_empty())
+            .or(base.f_retiro.as_deref())
+            .unwrap_or("");
+        let _f_retiro_date = parsear_fecha(fecha_corte_str);
 
         // 1. Sueldo Mensual = Sueldo Base + Total Primas
         let prima_total = base
@@ -36,11 +42,11 @@ pub fn generar_calculos(
         base.sueldo_mensual = redondear_dos(base.sueldo_base + prima_total);
 
         // 2. Alicuota Aguinaldo
-        base.aguinaldos = redondear_dos(calcular_alicuota_aguinaldo(base.sueldo_mensual, f_retiro));
+        base.aguinaldos = redondear_dos(calcular_alicuota_aguinaldo(base.sueldo_mensual, fecha_corte_str));
 
         // 3. Alicuota Vacaciones
         let (vacaciones, dias_vac) =
-            calcular_alicuota_vacaciones(base.sueldo_mensual, f_retiro, tiempo_servicio);
+            calcular_alicuota_vacaciones(base.sueldo_mensual, fecha_corte_str, tiempo_servicio);
         base.vacaciones = redondear_dos(vacaciones);
         base.dia_vacaciones = dias_vac;
 
@@ -231,6 +237,7 @@ mod tests {
             st_profesion: 0.0,
             patterns: "1-1-0".to_string(),
             f_retiro: None,
+            f_retiro_efectiva: None,
             sueldo_base: 500.0,
             unidad_tributaria: 0.0,
             salario_minimo: 0.0,

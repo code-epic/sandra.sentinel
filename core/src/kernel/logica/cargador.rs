@@ -467,8 +467,12 @@ impl Cargador {
             let mut affected_indices = Vec::new();
             let mut affected_bases = Vec::new();
             for (idx, ben) in results.iter_mut().enumerate() {
-                if let Some(ref fr) = ben.f_retiro {
-                    ben.base.f_retiro = Some(fr.clone());
+                // Propagar f_retiro y f_retiro_efectiva del Beneficiario a la Base.
+                // f_retiro_efectiva tiene prioridad como fecha de corte en cálculos.
+                let tiene_fecha_retiro = ben.f_retiro.is_some() || ben.f_retiro_efectiva.is_some();
+                if tiene_fecha_retiro {
+                    ben.base.f_retiro = ben.f_retiro.clone();
+                    ben.base.f_retiro_efectiva = ben.f_retiro_efectiva.clone();
                     // Reprocesar: antiguedad, antigüedad_grado, sueldo_base
                     crate::calc::procesar_registro_base(&mut ben.base, directivas);
                     affected_indices.push(idx);

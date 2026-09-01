@@ -74,8 +74,16 @@ pub fn procesar_registro_base(base: &mut Base, directivas: &Vec<Directiva>) {
 }
 
 /// Equivalente a __fechaReconocida y TiempoServicios
+/// Fecha de corte: `f_retiro_efectiva` (prioridad) → `f_retiro` (fallback) → hoy
 pub fn calcular_tiempo_servicio(base: &Base) -> TiempoServicio {
-    let f_retiro = parsear_fecha_o_hoy(base.f_retiro.as_deref());
+    // f_retiro_efectiva es la fecha canónica de corte cuando existe.
+    // Si es None o vacía, se cae en f_retiro (retrocompatibilidad).
+    let fecha_corte_str = base
+        .f_retiro_efectiva
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .or(base.f_retiro.as_deref());
+    let f_retiro = parsear_fecha_o_hoy(fecha_corte_str);
 
     let fecha_ing_str = base.fecha_ingreso.as_deref().unwrap_or("");
     // Limpiamos la fecha por si viene con hora (ISO 8601: "YYYY-MM-DDTHH:MM:SSZ")
@@ -215,17 +223,44 @@ fn parsear_fecha_o_hoy(fecha: Option<&str>) -> NaiveDate {
 }
 
 /// Equivalente a __restarFecha
-/// Retorna tiempo transcurrido entre f_inicio y f_fin
+/// Retorna tiempo transcurrido entre f_inicio y f_fin.
+/// También calcula la antigüedad en el grado (años transcurridos
+/// desde el último ascenso hasta la fecha de corte) de forma calendárica.
 fn restar_fechas(f_inicio: NaiveDate, f_fin: NaiveDate, f_grado: NaiveDate) -> TiempoServicio {
+    let (anos, meses, dias) = diferencia_calendario(f_inicio, f_fin);
+
+    // Calcular decimal para comparaciones (ej: 15.5 años)
+    let decimal = anos as f64 + (meses as f64 / 12.0) + (dias as f64 / 360.0);
+
+    // Antigüedad en el grado: diferencia calendárica entre f_grado y f_fin.
+    // Se calcula con el mismo algoritmo de préstamo (años/meses/días) para
+    // evitar truncamientos por división de días / 365.25 (ej: 2 años exactos
+    // = 730 días / 365.25 = 1.9986 -> truncaría a 1). Con diferencia
+    // calendárica el resultado es exacto.
+    let (anos_grado, ..) = diferencia_calendario(f_grado, f_fin);
+
+    TiempoServicio {
+        anos: anos.max(0) as u32,
+        meses: meses.max(0) as u32,
+        dias: dias.max(0) as u32,
+        antiguedad: decimal as u32,
+        antiguedad_grados: anos_grado.max(0) as u32,
+    }
+}
+
+/// Calcula la diferencia calendárica (años, meses, días) entre dos fechas
+/// usando préstamo de días del mes anterior (30 días) y meses del año
+/// anterior (12 meses), equivalente a la lógica legacy __restarFecha.
+fn diferencia_calendario(desde: NaiveDate, hasta: NaiveDate) -> (i32, i32, i32) {
     let (d1, m1, y1) = (
-        f_inicio.day() as i32,
-        f_inicio.month() as i32,
-        f_inicio.year() as i32,
+        desde.day() as i32,
+        desde.month() as i32,
+        desde.year(),
     );
     let (d2, m2, y2) = (
-        f_fin.day() as i32,
-        f_fin.month() as i32,
-        f_fin.year() as i32,
+        hasta.day() as i32,
+        hasta.month() as i32,
+        hasta.year(),
     );
 
     let mut anos = y2 - y1;
@@ -245,19 +280,255 @@ fn restar_fechas(f_inicio: NaiveDate, f_fin: NaiveDate, f_grado: NaiveDate) -> T
         anos -= 1;
     }
 
-    // Calcular decimal para comparaciones (ej: 15.5 años)
-    let decimal = anos as f64 + (meses as f64 / 12.0) + (dias as f64 / 360.0);
+    (anos, meses, dias)
+}
 
-    // Calcular antigüedad en grado (diferencia f_fin - f_grado)
-    // Usamos lógica simplificada de diferencia de días / 365
-    let diff_grado_dias = f_fin.signed_duration_since(f_grado).num_days();
-    let antiguedad_grado_anos = (diff_grado_dias as f64 / 365.25).max(0.0) as u32;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    TiempoServicio {
-        anos: anos.max(0) as u32,
-        meses: meses.max(0) as u32,
-        dias: dias.max(0) as u32,
-        antiguedad: decimal as u32,
-        antiguedad_grados: antiguedad_grado_anos,
+    /// Construye una Base con las fechas del caso de prueba reportado.
+    fn crear_base(case: &str, f_ingreso: &str, f_ult_ascenso: &str, f_retiro: &str) -> Base {
+        let mut b = Base::default();
+        b.fecha_ingreso = Some(f_ingreso.to_string());
+        b.f_ult_ascenso = Some(f_ult_ascenso.to_string());
+        b.f_retiro = Some(f_retiro.to_string());
+        b.patterns = format!("test-{}", case);
+        b
+    }
+
+    /// Caso reportado por el usuario: retiro 2011-07-05, ascenso 2009-07-05.
+    /// La antigüedad en el grado debe ser exactamente 2 años.
+    #[test]
+    fn antiguedad_grado_dos_anos_exactos() {
+        let base = crear_base(
+            "dos-anos",
+            "1990-01-01",
+            "2009-07-05",
+            "2011-07-05",
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 2,
+            "antigüedad en grado debe ser 2 años (2009-07-05 a 2011-07-05), fue {}",
+            t.antiguedad_grados
+        );
+    }
+
+    /// Un año exacto NO bisiesto (365 días): la división 365/365.25=0.999
+    /// truncaría a 0; con diferencia calendárica debe ser 1.
+    #[test]
+    fn antiguedad_grado_un_ano_exacto_no_bisiesto() {
+        let base = crear_base(
+            "un-ano",
+            "1990-01-01",
+            "2008-03-15",
+            "2009-03-15",
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 1,
+            "antigüedad en grado debe ser 1 año, fue {}",
+            t.antiguedad_grados
+        );
+    }
+
+    /// Rango que cruza un año bisiesto (2012): 2010-06-01 a 2013-06-01 = 3 años.
+    #[test]
+    fn antiguedad_grado_tres_anos_con_bisiesto() {
+        let base = crear_base(
+            "tres-anos-bisiesto",
+            "1990-01-01",
+            "2010-06-01",
+            "2013-06-01",
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 3,
+            "antigüedad en grado debe ser 3 años, fue {}",
+            t.antiguedad_grados
+        );
+    }
+
+    /// Meses parciales: 2015-02-10 a 2016-11-20 = 1 año, 9 meses, 10 días.
+    /// antiguedad_grados debe ser 1 (años completos).
+    #[test]
+    fn antiguedad_grado_meses_parciales_trunca_anos() {
+        let base = crear_base(
+            "meses-parciales",
+            "1990-01-01",
+            "2015-02-10",
+            "2016-11-20",
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 1,
+            "con 1 año 9 meses la antigüedad en grado debe ser 1, fue {}",
+            t.antiguedad_grados
+        );
+    }
+
+    /// Días parciales: 2018-01-01 a 2018-06-30 (6 meses, sin año completo).
+    /// antiguedad_grados debe ser 0.
+    #[test]
+    fn antiguedad_grado_menos_de_un_ano() {
+        let base = crear_base(
+            "menos-un-ano",
+            "1990-01-01",
+            "2018-01-01",
+            "2018-06-30",
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 0,
+            "con 6 meses la antigüedad en grado debe ser 0, fue {}",
+            t.antiguedad_grados
+        );
+    }
+
+    /// Verificamos que la antigüedad (tiempo de servicio total) también se
+    /// calcula bien: f_ingreso 1990-01-01 a f_retiro 2011-07-05 = 21 años.
+    #[test]
+    fn antiguedad_total_se_mantiene() {
+        let base = crear_base(
+            "total",
+            "1990-01-01",
+            "2009-07-05",
+            "2011-07-05",
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.anos, 21,
+            "antigüedad total debe ser 21 años (1990-01-01 a 2011-07-05), fue {}",
+            t.anos
+        );
+    }
+
+    // =========================================================================
+    // Tests de f_retiro_efectiva como fecha de corte con prioridad
+    // =========================================================================
+
+    /// Construye una Base con f_retiro_efectiva para tests de prioridad.
+    fn crear_base_con_efectiva(
+        case: &str,
+        f_ingreso: &str,
+        f_ult_ascenso: &str,
+        f_retiro: &str,
+        f_retiro_efectiva: Option<&str>,
+    ) -> Base {
+        let mut b = Base::default();
+        b.fecha_ingreso = Some(f_ingreso.to_string());
+        b.f_ult_ascenso = Some(f_ult_ascenso.to_string());
+        b.f_retiro = Some(f_retiro.to_string());
+        b.f_retiro_efectiva = f_retiro_efectiva.map(|s| s.to_string());
+        b.patterns = format!("test-{}", case);
+        b
+    }
+
+    /// Caso 1: f_retiro_efectiva existe y difiere de f_retiro.
+    /// Debe usar f_retiro_efectiva como fecha de corte.
+    /// f_retiro = 2013-07-05, f_retiro_efectiva = 2011-07-05, ascenso = 2009-07-05
+    /// Antigüedad en grado con f_retiro_efectiva: 2009-07-05 → 2011-07-05 = 2 años
+    /// Antigüedad total con f_retiro_efectiva: 1990-01-01 → 2011-07-05 = 21 años
+    #[test]
+    fn f_retiro_efectiva_tiene_prioridad_sobre_f_retiro() {
+        let base = crear_base_con_efectiva(
+            "efectiva-prioridad",
+            "1990-01-01",
+            "2009-07-05",
+            "2013-07-05",     // f_retiro (ignorada)
+            Some("2011-07-05"), // f_retiro_efectiva (usada)
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 2,
+            "con f_retiro_efectiva=2011-07-05, antigüedad en grado debe ser 2 (desde 2009-07-05), fue {}",
+            t.antiguedad_grados
+        );
+        assert_eq!(
+            t.anos, 21,
+            "con f_retiro_efectiva=2011-07-05, antigüedad total debe ser 21 (desde 1990-01-01), fue {}",
+            t.anos
+        );
+    }
+
+    /// Caso 2: f_retiro_efectiva es None (null) → fallback a f_retiro.
+    /// Comportamiento idéntico al actual: f_retiro = 2011-07-05.
+    #[test]
+    fn f_retiro_efectiva_null_usa_f_retiro_fallback() {
+        let base = crear_base_con_efectiva(
+            "fallback",
+            "1990-01-01",
+            "2009-07-05",
+            "2011-07-05", // f_retiro (usada como fallback)
+            None,         // f_retiro_efectiva es null
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 2,
+            "sin f_retiro_efectiva, debe usar f_retiro: antigüedad en grado = 2, fue {}",
+            t.antiguedad_grados
+        );
+        assert_eq!(
+            t.anos, 21,
+            "sin f_retiro_efectiva, debe usar f_retiro: antigüedad total = 21, fue {}",
+            t.anos
+        );
+    }
+
+    /// Caso 3: Ambas fechas iguales (caso reportado por usuario).
+    /// f_retiro = 2011-07-05, f_retiro_efectiva = 2011-07-05.
+    /// Resultado debe ser 2 años de antigüedad en grado.
+    #[test]
+    fn f_retiro_efectiva_igual_a_f_retiro() {
+        let base = crear_base_con_efectiva(
+            "ambas-iguales",
+            "1990-01-01",
+            "2009-07-05",
+            "2011-07-05",
+            Some("2011-07-05"),
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 2,
+            "con ambas fechas iguales a 2011-07-05, antigüedad en grado = 2, fue {}",
+            t.antiguedad_grados
+        );
+    }
+
+    /// Caso 4: f_retiro_efectiva vacía (string vacío) → fallback a f_retiro.
+    #[test]
+    fn f_retiro_efectiva_vacia_usa_f_retiro_fallback() {
+        let base = crear_base_con_efectiva(
+            "efectiva-vacia",
+            "1990-01-01",
+            "2009-07-05",
+            "2011-07-05",
+            Some(""), // f_retiro_efectiva es string vacío
+        );
+        let t = calcular_tiempo_servicio(&base);
+        assert_eq!(
+            t.antiguedad_grados, 2,
+            "con f_retiro_efectiva vacía, debe usar f_retiro: antigüedad en grado = 2, fue {}",
+            t.antiguedad_grados
+        );
+    }
+
+    /// Caso 5: Solo f_retiro_efectiva sin f_retiro.
+    /// f_retiro = None, f_retiro_efectiva = 2011-07-05.
+    #[test]
+    fn solo_f_retiro_efectiva_sin_f_retiro() {
+        let mut b = Base::default();
+        b.fecha_ingreso = Some("1990-01-01".to_string());
+        b.f_ult_ascenso = Some("2009-07-05".to_string());
+        b.f_retiro = None;
+        b.f_retiro_efectiva = Some("2011-07-05".to_string());
+        b.patterns = "test-solo-efectiva".to_string();
+        let t = calcular_tiempo_servicio(&b);
+        assert_eq!(
+            t.antiguedad_grados, 2,
+            "con solo f_retiro_efectiva=2011-07-05, antigüedad en grado = 2, fue {}",
+            t.antiguedad_grados
+        );
     }
 }
