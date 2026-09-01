@@ -181,6 +181,7 @@ pub fn exportar_nomina_csv(
         "reverso_embargo_aa_ejecutado",
         "monto_recuperado_activo",
         "movimiento_inactivo_aa",
+        "total_depositado_banco",
         "patterns",
     ])?;
 
@@ -267,6 +268,7 @@ pub fn exportar_nomina_csv(
             &format!("{:.2}", b.movimientos.reverso_embargo_aa_ejecutado),
             &format!("{:.2}", b.movimientos.monto_recuperado_activo),
             &format!("{:.2}", b.movimientos.movimiento_inactivo_aa),
+            &format!("{:.2}", truncar_dos(b.base.total_depositado_banco)),
             &b.patterns,
         ])?;
     }
@@ -1045,6 +1047,7 @@ fn generar_headers_nomina(
         headers.push("movimiento_inactivo_aa".to_string());
     }
 
+    headers.push("total_depositado_banco".to_string());
     headers.push("patterns".to_string());
     headers.push("porcentaje".to_string());
     headers.push("sueldo_neto_porcentaje".to_string());
@@ -1180,6 +1183,8 @@ fn generar_registro_nomina(
         record.push(format!("{:.2}", b.movimientos.movimiento_inactivo_aa));
     }
 
+    // Total depositado en banco: deposito_banco + deposito_de_garantias
+    record.push(format!("{:.2}", truncar_dos(b.base.total_depositado_banco)));
     record.push(b.patterns.clone());
     record.push(format!("{:.2}", b.porcentaje));
 
@@ -1305,6 +1310,7 @@ fn es_campo_fijo(campo: &str) -> bool {
             | "reverso_embargo_aa_ejecutado"
             | "monto_recuperado_activo"
             | "movimiento_inactivo_aa"
+            | "total_depositado_banco"
             | "patterns"
             | "porcentaje"
             | "sueldo_neto_porcentaje"

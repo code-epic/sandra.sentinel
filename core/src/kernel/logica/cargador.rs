@@ -384,6 +384,8 @@ impl Cargador {
                                     item.base.deposito_banco = ultimo_mov.deposito_aa;
                                     // depositado_en_banco = capital_banco + garantias (tipo 3 + tipo 32)
                                     item.base.depositado_en_banco = ultimo_mov.deposito_aa + ultimo_mov.deposito_de_garantias;
+                                    // total_depositado_banco = deposito_banco + deposito_de_garantias
+                                    item.base.total_depositado_banco = ultimo_mov.deposito_aa + ultimo_mov.deposito_de_garantias;
                                     // total_aportados = capital_banco + garantias + dias_adicionales (tipo 3 + tipo 32 + tipo 31)
                                     let total_aportado = ultimo_mov.deposito_aa
                                         + ultimo_mov.deposito_de_garantias
@@ -416,6 +418,14 @@ impl Cargador {
                                         - ultimo_mov.deposito_de_dias_adicionales
                                         - ultimo_mov.deposito_de_garantias
                                     );
+                                }
+                            } else {
+                                // saldos_acumulados es null: no existe registro de movimientos
+                                // para este beneficiario. Si depositado_en_banco es cero,
+                                // la diferencia_asignacion equivale a la asignacion_antiguedad
+                                // completa (nada fue depositado).
+                                if item.base.depositado_en_banco == 0.0 {
+                                    item.base.diferencia_asignacion = item.base.asignacion_antiguedad;
                                 }
                             }
 
@@ -491,12 +501,18 @@ impl Cargador {
                     let mov = &results[idx].movimientos;
                     let base = &mut affected_bases[i];
 
-                    base.diferencia_asignacion = crate::calc::calculos::redondear_dos(
-                        base.asignacion_antiguedad
-                            - base.deposito_banco
-                            - mov.deposito_de_dias_adicionales
-                            - mov.deposito_de_garantias,
-                    );
+                    // saldos_acumulados null: si no hubo movimiento y depositado_en_banco es
+                    // cero, la diferencia_asignacion equivale a la asignacion_antiguedad completa.
+                    if base.depositado_en_banco == 0.0 && mov.deposito_de_garantias == 0.0 {
+                        base.diferencia_asignacion = base.asignacion_antiguedad;
+                    } else {
+                        base.diferencia_asignacion = crate::calc::calculos::redondear_dos(
+                            base.asignacion_antiguedad
+                                - base.deposito_banco
+                                - mov.deposito_de_dias_adicionales
+                                - mov.deposito_de_garantias,
+                        );
+                    }
 
                     if base.asignacion_antiguedad > 0.0 {
                         base.porcentaje_cancelado =

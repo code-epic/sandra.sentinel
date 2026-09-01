@@ -313,6 +313,11 @@ pub struct Base {
     #[serde(default)]
     pub diferencia_asignacion: f64,
 
+    /// Total depositado en banco: deposito_banco + deposito_de_garantias.
+    /// Se calcula durante la fase de fusión en cargador.
+    #[serde(default)]
+    pub total_depositado_banco: f64,
+
     // Campos de anticipo de garantías (distribución)
     #[serde(default)]
     pub garantia_original: f64,
@@ -523,6 +528,7 @@ impl Default for Base {
             porcentaje_cancelado: 0.0,
             saldo_disponible: 0.0,
             diferencia_asignacion: 0.0,
+            total_depositado_banco: 0.0,
             garantia_original: 0.0,
             garantia_anticipo: 0.0,
             factor_aplicado: 0.0,
