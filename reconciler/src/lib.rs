@@ -279,16 +279,14 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
         let _ = save_debug_sample(&debug_records, out_dir);
     }
 
-    // PASO 5.5: ENVIAR INDICE A API
-    if let Some(ref api_url) = config.api_url {
+    // PASO 5.5: ENVIAR INDICE POR gRPC
+    {
         let payload = indice_writer.build_payload();
         let listado = payload["listado"].as_array().map(|a| a.len()).unwrap_or(0);
-        if listado > 0 {
-            if let Err(e) = output::indice::send_indice(api_url, &config.driver, &config.grpc_parametros, &payload).await {
-                eprintln!("[WARN] Error enviando indice a API: {}", e);
-            } else if !quiet {
-                println!("  API:             {} registros enviados a {}", listado, api_url);
-            }
+        if let Err(e) = output::indice::send_indice(&config.grpc_url, &config.driver, &config.grpc_parametros, &payload).await {
+            eprintln!("[WARN] Error enviando indice por gRPC: {}", e);
+        } else if !quiet {
+            println!("  Indice gRPC:     {} registros enviados a file-fideicomitentes-validate (driver: {})", listado, config.driver);
         }
     }
 

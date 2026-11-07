@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use sandra_core::kernel::sandra::sentinel_dynamic_service_client::SentinelDynamicServiceClient;
+use sandra_core::kernel::sandra::DynamicRequest;
 use serde::Serialize;
 
 use crate::error::Result;
@@ -24,7 +26,7 @@ impl IndiceWriter {
     pub fn new(parametro: &str, field_names: Vec<String>) -> Self {
         IndiceWriter {
             inner: Vec::new(),
-            parametro: parametro.to_string(),
+            parametro: parametro.trim_matches('"').to_string(),
             field_names,
         }
     }
@@ -74,8 +76,9 @@ impl IndiceWriter {
     }
 }
 
-pub async fn send_indice(api_url: &str, driver: &str, parametro: &str, objeto: &serde_json::Value) -> Result<()> {
-    let donde = serde_json::json!({"parametro": parametro}).to_string();
+pub async fn send_indice(grpc_url: &str, driver: &str, parametro: &str, objeto: &serde_json::Value) -> Result<()> {
+    let param_clean = parametro.trim_matches('"');
+    let donde = serde_json::json!({"parametro": param_clean}).to_string();
     let payload = serde_json::json!({
         "coleccion": "file-fideicomitentes-validate",
         "objeto": objeto,
@@ -84,27 +87,29 @@ pub async fn send_indice(api_url: &str, driver: &str, parametro: &str, objeto: &
         "upsert": true,
     });
 
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .map_err(|e| crate::error::ReconcilerError::Io(
-            std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-        ))?;
-
-    let resp = client
-        .post(api_url)
-        .json(&payload)
-        .send()
+    let mut client = SentinelDynamicServiceClient::connect(grpc_url.to_string())
         .await
         .map_err(|e| crate::error::ReconcilerError::Io(
-            std::io::Error::new(std::io::ErrorKind::Other, format!("Error POST a {}: {}", api_url, e))
+            std::io::Error::new(std::io::ErrorKind::Other, format!("Error conectando gRPC {}: {}", grpc_url, e))
+        ))?
+        .max_decoding_message_size(usize::MAX)
+        .max_encoding_message_size(usize::MAX);
+
+    let request = tonic::Request::new(DynamicRequest {
+        funcion: "ccoleccion".to_string(),
+        parametros: param_clean.to_string(),
+        valores: payload.to_string(),
+    });
+
+    let response = client
+        .execute_dynamic(request)
+        .await
+        .map_err(|e| crate::error::ReconcilerError::Io(
+            std::io::Error::new(std::io::ErrorKind::Other, format!("Error enviando indice por gRPC a {}: {}", grpc_url, e))
         ))?;
 
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body = resp.text().await.unwrap_or_default();
-        eprintln!("[WARN] API respondio {}: {}", status, body);
-    }
+    let mut stream = response.into_inner();
+    while let Ok(Some(_)) = stream.message().await {}
 
     Ok(())
 }
