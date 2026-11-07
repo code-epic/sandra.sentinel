@@ -3,7 +3,7 @@ use std::io::Write;
 use crate::error::Result;
 
 pub fn write_staging_script(out_dir: &str, parametro: &str, delimiter: char) -> Result<()> {
-    let tabla = match parametro {
+    let tabla = match parametro.trim_matches('"') {
         "1" => "tmp_ejercito",
         "2" => "tmp_armada",
         "3" => "tmp_aviacion",
@@ -20,18 +20,31 @@ pub fn write_staging_script(out_dir: &str, parametro: &str, delimiter: char) -> 
         delimiter.to_string()
     };
 
+    let pg_host = std::env::var("PGHOST").unwrap_or_else(|_| "localhost".to_string());
+    let pg_port = std::env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
+    let pg_user = std::env::var("PGUSER").unwrap_or_else(|_| "postgres".to_string());
+    let pg_database = std::env::var("PGDATABASE").unwrap_or_else(|_| "pace".to_string());
+    let pg_password = std::env::var("PGPASSWORD").unwrap_or_else(|_| "postgres".to_string());
+
     writeln!(file, r##"#!/usr/bin/env bash
 set -euo pipefail
 
 ARCHIVO="${{1:-nuevos.csv}}"
-: "${{PGHOST:=localhost}}"
-: "${{PGPORT:=5432}}"
-: "${{PGUSER:=postgres}}"
-: "${{PGDATABASE:=pace}}"
-: "${{PGPASSWORD:=postgres}}"
+: "${{PGHOST:={pg_host}}}"
+: "${{PGPORT:={pg_port}}}"
+: "${{PGUSER:={pg_user}}}"
+: "${{PGDATABASE:={pg_database}}}"
+: "${{PGPASSWORD:={pg_password}}}"
 
-export PGHOST PGPORT PGUSER PGDATABASE PGPASSWORD
+export PGHOST PGPORT PGUSER PGDATABASE PGPASSWORD"##,
+        pg_host = pg_host,
+        pg_port = pg_port,
+        pg_user = pg_user,
+        pg_database = pg_database,
+        pg_password = pg_password,
+    )?;
 
+    writeln!(file, r##"
 TABLA="{tabla}"
 
 if [[ ! -f "$ARCHIVO" ]]; then
@@ -73,6 +86,67 @@ echo "[OK] Cargados $(wc -l < "$ARCHIVO") registros en ${{TABLA}}"
         let mut perms = file.metadata()?.permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&path, perms)?;
+    }
+
+    Ok(())
+}
+
+pub fn execute_staging_script(out_dir: &str, parametro: &str, quiet: bool) -> Result<()> {
+    let tabla = match parametro.trim_matches('"') {
+        "1" => "tmp_ejercito",
+        "2" => "tmp_armada",
+        "3" => "tmp_aviacion",
+        "4" => "tmp_guardia",
+        _ => return Ok(()),
+    };
+
+    let script_path = format!("{}/cargar_staging.sh", out_dir);
+    let csv_path = format!("{}/nuevos.csv", out_dir);
+
+    if !std::path::Path::new(&script_path).exists() || !std::path::Path::new(&csv_path).exists() {
+        return Ok(());
+    }
+
+    let pg_host = std::env::var("PGHOST").unwrap_or_else(|_| "localhost".to_string());
+    let pg_port = std::env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
+    let pg_user = std::env::var("PGUSER").unwrap_or_else(|_| "postgres".to_string());
+    let pg_database = std::env::var("PGDATABASE").unwrap_or_else(|_| "pace".to_string());
+    let pg_password = std::env::var("PGPASSWORD").unwrap_or_else(|_| "postgres".to_string());
+
+    let output = std::process::Command::new("bash")
+        .arg("./cargar_staging.sh")
+        .arg("nuevos.csv")
+        .current_dir(out_dir)
+        .env("PGHOST", &pg_host)
+        .env("PGPORT", &pg_port)
+        .env("PGUSER", &pg_user)
+        .env("PGDATABASE", &pg_database)
+        .env("PGPASSWORD", &pg_password)
+        .output();
+
+    match output {
+        Ok(out) => {
+            if out.status.success() {
+                if !quiet {
+                    let stdout = String::from_utf8_lossy(&out.stdout);
+                    for line in stdout.lines() {
+                        if line.starts_with("[OK]") {
+                            println!("  Staging PG:      {}", line);
+                        }
+                    }
+                }
+            } else {
+                let stderr = String::from_utf8_lossy(&out.stderr);
+                eprintln!(
+                    "[WARN] Error cargando staging en PostgreSQL ({}): {}",
+                    tabla,
+                    stderr.trim()
+                );
+            }
+        }
+        Err(e) => {
+            eprintln!("[WARN] No se pudo ejecutar cargar_staging.sh: {}", e);
+        }
     }
 
     Ok(())

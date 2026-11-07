@@ -35,6 +35,11 @@ pub async fn execute(
         compress,
         api_url,
         driver,
+        pg_host: None,
+        pg_port: None,
+        pg_user: None,
+        pg_database: None,
+        pg_password: None,
     };
 
     let config = args.into_config()?;

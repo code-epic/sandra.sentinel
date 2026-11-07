@@ -49,6 +49,21 @@ pub struct ReconcilerCli {
 
     #[arg(long, default_value = "MGDBA")]
     pub driver: String,
+
+    #[arg(long)]
+    pub pg_host: Option<String>,
+
+    #[arg(long)]
+    pub pg_port: Option<String>,
+
+    #[arg(long)]
+    pub pg_user: Option<String>,
+
+    #[arg(long)]
+    pub pg_database: Option<String>,
+
+    #[arg(long)]
+    pub pg_password: Option<String>,
 }
 
 impl ReconcilerCli {
@@ -82,6 +97,22 @@ impl ReconcilerCli {
         } else {
             None
         };
+
+        if let Some(ref host) = self.pg_host {
+            std::env::set_var("PGHOST", host);
+        }
+        if let Some(ref port) = self.pg_port {
+            std::env::set_var("PGPORT", port);
+        }
+        if let Some(ref user) = self.pg_user {
+            std::env::set_var("PGUSER", user);
+        }
+        if let Some(ref db) = self.pg_database {
+            std::env::set_var("PGDATABASE", db);
+        }
+        if let Some(ref pwd) = self.pg_password {
+            std::env::set_var("PGPASSWORD", pwd);
+        }
 
         Ok(ReconcilerConfig {
             csv_path: self.csv_path.to_string_lossy().to_string(),

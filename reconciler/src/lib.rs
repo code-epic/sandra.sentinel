@@ -273,6 +273,7 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     postgres_insert_builder.write_to_file(&format!("{}/insert_batch.sql", out_dir))?;
     indice_writer.write_to_file(&format!("{}/indice_cedulas.json", out_dir))?;
     output::staging_script::write_staging_script(out_dir, &config.grpc_parametros, config.delimiter)?;
+    output::staging_script::execute_staging_script(out_dir, &config.grpc_parametros, quiet)?;
 
     if config.debug && !debug_records.is_empty() {
         let _ = save_debug_sample(&debug_records, out_dir);
