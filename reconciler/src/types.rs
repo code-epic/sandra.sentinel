@@ -18,6 +18,11 @@ pub struct ReconcilerConfig {
     pub compress: bool,
     pub api_url: Option<String>,
     pub driver: String,
+    pub pg_host: String,
+    pub pg_port: String,
+    pub pg_user: String,
+    pub pg_database: String,
+    pub pg_password: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -67,8 +72,153 @@ pub enum ConciliationStatus {
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct FieldDiff {
     pub field_name: String,
+    /// Valor leído del CSV.
     pub expected: String,
+    /// Valor leído de gRPC (SSSIFANB).
     pub actual: String,
+}
+
+impl FieldDiff {
+    /// Categoría a la que pertenece el campo que difiere.
+    ///
+    /// Fuente única de verdad: la usan tanto `detalle.txt` como el índice
+    /// persistido en MongoDB para que la razón del rechazo sea idéntica en
+    /// ambos artefactos.
+    pub fn categoria(&self) -> Categoria {
+        Categoria::from_field_name(&self.field_name)
+    }
+}
+
+/// Catálogo REAL y definitivo que consume el frontend Angular de auditoría
+/// de discrepancias (`auditoria-discrepancias.component.ts`).
+///
+/// Contiene los IDs de las carpetas/motivos que navega la UI. El reconciler
+/// solo produce las seis primeras (categorías de campo, ver [`Categoria`]);
+/// las cinco últimas son categorías por estatus que llegan del stream
+/// `LISTAR_TMP_COMPONENTE` (`status_id` / `componente_id`) y NO deben ser
+/// emitidas por el motor de cálculo. `TODOS` y `SIN DISCREPANCIAS` son
+/// pseudo-carpetas de UI y tampoco son motivos.
+pub const CATALOGO_UI: [&str; 11] = [
+    "FECHAS",
+    "GRADOS",
+    "TIEMPO_RECONOCIDO",
+    "FAMILIA",
+    "PROFESION",
+    "OTROS",
+    "NUEVO",
+    "REINCORPORADOS",
+    "PARALIZADOS",
+    "CAMBIO_COMPONENTE",
+    "RETIRADOS",
+];
+
+/// Subconjunto de [`CATALOGO_UI`] que NO proviene de diferencias de campo:
+/// son categorías por estatus emitidas por `LISTAR_TMP_COMPONENTE`. Se
+/// mantienen documentadas aquí para que quede explícito que el reconciler
+/// nunca las produce (no hay variantes muertas en [`Categoria`]).
+pub const CATALOGO_POR_ESTATUS: [&str; 5] = [
+    "NUEVO",
+    "REINCORPORADOS",
+    "PARALIZADOS",
+    "CAMBIO_COMPONENTE",
+    "RETIRADOS",
+];
+
+/// Categoría de un campo con diferencias.
+///
+/// Los IDs coinciden EXACTAMENTE con los de la UI. El orden de declaración de
+/// las variantes es el orden canónico de presentación y del campo
+/// `grupo_validacion` del motivo: `FECHAS`, `GRADOS`, `TIEMPO_RECONOCIDO`,
+/// `FAMILIA`, `PROFESION`, `OTROS`. El `Ord` derivado garantiza que
+/// `categorias` sea determinista y ya ordenado según la UI.
+///
+/// Catálogo completo de la UI: ver [`CATALOGO_UI`]. Las categorías
+/// `NUEVO`, `REINCORPORADOS`, `PARALIZADOS`, `CAMBIO_COMPONENTE` y
+/// `RETIRADOS` son por estatus (`LISTAR_TMP_COMPONENTE`) y NO las emite el
+/// reconciler; por eso no existen como variantes de este enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+pub enum Categoria {
+    #[serde(rename = "FECHAS")]
+    Fechas,
+    #[serde(rename = "GRADOS")]
+    Grados,
+    #[serde(rename = "TIEMPO_RECONOCIDO")]
+    TiempoReconocido,
+    #[serde(rename = "FAMILIA")]
+    Familia,
+    #[serde(rename = "PROFESION")]
+    Profesion,
+    #[serde(rename = "OTROS")]
+    Otros,
+}
+
+impl Categoria {
+    /// Nombre exacto que se emite en JSON, en `detalle.txt` y en el campo
+    /// `grupo_validacion` del motivo.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Categoria::Fechas => "FECHAS",
+            Categoria::Grados => "GRADOS",
+            Categoria::TiempoReconocido => "TIEMPO_RECONOCIDO",
+            Categoria::Familia => "FAMILIA",
+            Categoria::Profesion => "PROFESION",
+            Categoria::Otros => "OTROS",
+        }
+    }
+
+    /// Clasifica un campo por su nombre (tal como aparece en
+    /// `FieldMapping.field_name`).
+    pub fn from_field_name(field_name: &str) -> Self {
+        match field_name {
+            "grado_id" | "grado" => Categoria::Grados,
+            "n_hijos" => Categoria::Familia,
+            "f_ingreso" | "f_ult_ascenso" | "fecha_ingreso" => Categoria::Fechas,
+            "anio_reconocido" | "mes_reconocido" | "dia_reconocido" => Categoria::TiempoReconocido,
+            "st_profesion" => Categoria::Profesion,
+            _ => Categoria::Otros,
+        }
+    }
+}
+
+impl std::fmt::Display for Categoria {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Normaliza una fecha al formato `YYYY-MM-DD`.
+///
+/// Fuente única de verdad para todo artefacto de salida que deba exponer
+/// fechas homologadas (`detalles`, `motivo.campos[]`, `detalle.txt`,
+/// `rechazos.csv`, `nuevos.csv`, `pendientes.csv`, `postgres_batch.sql` e
+/// `insert_batch.sql`).
+///
+/// - Si el valor empieza por una fecha válida `YYYY-MM-DD` (aunque venga
+///   con `T`, `Z` o fracciones de segundo), devuelve exactamente esos 10
+///   caracteres.
+/// - Si viene vacío o no es parseable, devuelve el valor sin cambios.
+///   Nunca inventa valores ni rellena con `0`.
+pub fn normalizar_fecha(valor: &str) -> String {
+    if valor.trim().is_empty() {
+        return valor.to_string();
+    }
+    match valor.get(..10) {
+        Some(candidate) if chrono::NaiveDate::parse_from_str(candidate, "%Y-%m-%d").is_ok() => {
+            candidate.to_string()
+        }
+        _ => valor.to_string(),
+    }
+}
+
+/// Indica si un campo del mapping representa una fecha.
+///
+/// Se mantiene alineado con [`Categoria::Fechas`] y agrega `f_ingreso_sistema`,
+/// que también llega desde gRPC con hora (`T00:00:00Z`).
+pub fn es_campo_fecha(field_name: &str) -> bool {
+    matches!(
+        field_name,
+        "f_ingreso" | "f_ult_ascenso" | "fecha_ingreso" | "f_ingreso_sistema"
+    )
 }
 
 #[derive(Debug)]
@@ -183,4 +333,64 @@ pub fn default_field_mappings() -> Vec<FieldMapping> {
             strategy: ComparisonStrategy::Numeric { epsilon: 0.0 },
         },
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalizar_fecha_recorta_timestamp_iso() {
+        assert_eq!(normalizar_fecha("2023-07-05T00:00:00Z"), "2023-07-05");
+        assert_eq!(
+            normalizar_fecha("2023-07-05T23:59:59.123456Z"),
+            "2023-07-05"
+        );
+    }
+
+    #[test]
+    fn test_normalizar_fecha_es_idempotente() {
+        assert_eq!(normalizar_fecha("2023-07-05"), "2023-07-05");
+        let una_vez = normalizar_fecha("2023-07-05T00:00:00Z");
+        assert_eq!(normalizar_fecha(&una_vez), "2023-07-05");
+    }
+
+    #[test]
+    fn test_normalizar_fecha_vacio_no_inventa() {
+        assert_eq!(normalizar_fecha(""), "");
+        assert_eq!(normalizar_fecha("   "), "   ");
+    }
+
+    #[test]
+    fn test_normalizar_fecha_invalida_devuelve_tal_cual() {
+        assert_eq!(normalizar_fecha("no-es-fecha"), "no-es-fecha");
+        assert_eq!(normalizar_fecha("05/07/2023"), "05/07/2023");
+        // Fecha con mes/día fuera de rango: no se debe inventar ni truncar.
+        assert_eq!(normalizar_fecha("2023-13-45"), "2023-13-45");
+        assert_eq!(normalizar_fecha("2023-07-05extra"), "2023-07-05");
+    }
+
+    #[test]
+    fn test_es_campo_fecha_cubre_los_cuatro_nombres() {
+        for field in [
+            "f_ingreso",
+            "f_ult_ascenso",
+            "fecha_ingreso",
+            "f_ingreso_sistema",
+        ] {
+            assert!(es_campo_fecha(field), "{} debe ser fecha", field);
+        }
+        for field in ["grado", "grado_id", "n_hijos", "st_profesion", "otro"] {
+            assert!(!es_campo_fecha(field), "{} no debe ser fecha", field);
+        }
+    }
+
+    /// Guardián: todos los campos fecha del catálogo pertenecen a FECHAS.
+    #[test]
+    fn test_campos_fecha_coinciden_con_categoria_fechas() {
+        for field in ["f_ingreso", "f_ult_ascenso", "fecha_ingreso"] {
+            assert_eq!(Categoria::from_field_name(field), Categoria::Fechas);
+            assert!(es_campo_fecha(field));
+        }
+    }
 }

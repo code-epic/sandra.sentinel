@@ -230,6 +230,26 @@ enum Commands {
         /// Driver de base de datos para la API.
         #[arg(long, default_value = "MGDBA")]
         driver: String,
+
+        /// Host de PostgreSQL para carga staging.
+        #[arg(long)]
+        pg_host: Option<String>,
+
+        /// Puerto de PostgreSQL para carga staging.
+        #[arg(long)]
+        pg_port: Option<String>,
+
+        /// Usuario de PostgreSQL para carga staging.
+        #[arg(long)]
+        pg_user: Option<String>,
+
+        /// Base de datos de PostgreSQL para carga staging.
+        #[arg(long)]
+        pg_database: Option<String>,
+
+        /// Contraseña de PostgreSQL para carga staging.
+        #[arg(long)]
+        pg_password: Option<String>,
     },
 
     /// Valida claves de acceso y permisos de seguridad (Herramienta admin).
@@ -297,6 +317,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             compress,
             api_url,
             driver,
+            pg_host,
+            pg_port,
+            pg_user,
+            pg_database,
+            pg_password,
         }) => {
             commands::reconcile_stream::execute(
                 csv_path.clone(),
@@ -312,6 +337,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 *compress,
                 api_url.clone(),
                 driver.clone(),
+                pg_host.clone(),
+                pg_port.clone(),
+                pg_user.clone(),
+                pg_database.clone(),
+                pg_password.clone(),
             ).await?;
         }
         Some(Commands::Validar { clave }) => {

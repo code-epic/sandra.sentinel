@@ -9,6 +9,8 @@ pub fn write_metrics_report(
     metrics: &MetricsSnapshot,
     pendientes_count: u64,
     nuevos_count: u64,
+    total_csv: u64,
+    total_grpc: u64,
     compress: bool,
 ) -> Result<()> {
     let mut file = File::create(path)?;
@@ -16,8 +18,8 @@ pub fn write_metrics_report(
     writeln!(file, "REPORTE DE CONCILIACIÓN")?;
     writeln!(file, "=======================")?;
     writeln!(file)?;
-    writeln!(file, "Registros CSV:            {}", metrics.records_processed)?;
-    writeln!(file, "Registros gRPC:           {}", metrics.records_processed + metrics.records_not_found_csv)?;
+    writeln!(file, "Registros CSV:            {}", total_csv)?;
+    writeln!(file, "Registros gRPC:           {}", total_grpc)?;
     writeln!(file, "Hits (100% match):        {}", metrics.records_matched)?;
     writeln!(file, "Diferencias parciales:    {}", metrics.records_partial)?;
     writeln!(file, "No encontrados en CSV:    {}", metrics.records_not_found_csv)?;
@@ -66,13 +68,15 @@ mod tests {
         };
 
         let path = "/tmp/test_report_with_zst.txt";
-        write_metrics_report(path, &metrics, 1, 1, true).unwrap();
+        write_metrics_report(path, &metrics, 1, 1, 2, 100, true).unwrap();
         let content = std::fs::read_to_string(path).unwrap();
+        assert!(content.contains("Registros CSV:            2"));
+        assert!(content.contains("Registros gRPC:           100"));
         assert!(content.contains("*.csv.zst"));
         assert!(content.contains("*.txt.zst"));
 
         let path2 = "/tmp/test_report_no_zst.txt";
-        write_metrics_report(path2, &metrics, 1, 1, false).unwrap();
+        write_metrics_report(path2, &metrics, 1, 1, 2, 100, false).unwrap();
         let content2 = std::fs::read_to_string(path2).unwrap();
         assert!(!content2.contains("*.csv.zst"));
     }

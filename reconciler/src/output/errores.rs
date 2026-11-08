@@ -33,11 +33,19 @@ impl RichErrorWriter {
     }
 
     pub fn write(&mut self, result: &ConciliationResult) -> Result<()> {
-        let diffs: Vec<RichDiff> = result.diffs.iter().map(|d| RichDiff {
-            campo: d.field_name.clone(),
-            valor_csv: d.expected.clone(),
-            valor_grpc: d.actual.clone(),
-        }).collect();
+        // `errores.jsonl` es la traza de diagnóstico: conserva los valores
+        // RAW de gRPC (p.ej. `2023-07-05T00:00:00Z`) a propósito. La
+        // normalización a `YYYY-MM-DD` aplica solo a los artefactos de salida
+        // operativos (`detalles`, `motivo`, `detalle.txt`, CSV y SQL).
+        let diffs: Vec<RichDiff> = result
+            .diffs
+            .iter()
+            .map(|d| RichDiff {
+                campo: d.field_name.clone(),
+                valor_csv: d.expected.clone(),
+                valor_grpc: d.actual.clone(),
+            })
+            .collect();
 
         let record = RichErrorRecord {
             cedula: result.cedula.clone(),

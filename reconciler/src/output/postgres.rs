@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Write;
 
 use crate::error::Result;
+use crate::types::{es_campo_fecha, normalizar_fecha};
 
 /// Batch UPDATE único en PostgreSQL que actualiza TODOS los campos
 /// para cada cédula con diferencias, usando VALUES multi-fila.
@@ -31,8 +32,15 @@ impl PostgresBatchBuilder {
         }
 
         let mut file = File::create(path)?;
-        writeln!(&mut file, "-- Batch de actualizaciones generado por Sandra Reconciler")?;
-        writeln!(&mut file, "-- Total registros con diferencias: {}", self.updates.len())?;
+        writeln!(
+            &mut file,
+            "-- Batch de actualizaciones generado por Sandra Reconciler"
+        )?;
+        writeln!(
+            &mut file,
+            "-- Total registros con diferencias: {}",
+            self.updates.len()
+        )?;
         writeln!(&mut file, "BEGIN;")?;
         writeln!(&mut file)?;
 
@@ -80,10 +88,10 @@ impl PostgresBatchBuilder {
 }
 
 fn format_postgres_value(val: &str, field_name: &str) -> String {
-    // Truncar fechas a YYYY-MM-DD
-    if field_name == "f_ingreso" || field_name == "f_ult_ascenso" || field_name == "fecha_ingreso" {
-        let truncated = val.split('T').next().unwrap_or(val);
-        return format!("'{}'", truncated.replace("'", "''"));
+    // Normalizar fechas a YYYY-MM-DD con la fuente única compartida.
+    if es_campo_fecha(field_name) {
+        let normalized = normalizar_fecha(val);
+        return format!("'{}'", normalized.replace("'", "''"));
     }
 
     // Numéricos enteros: sin comillas

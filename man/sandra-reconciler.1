@@ -93,29 +93,79 @@ Registros con coincidencia 100% (mismo formato que el CSV de entrada).
 .TP
 .I rechazos.csv
 Registros con diferencias parciales. Incluye todos los campos del mapping.
+Las fechas se emiten en formato
+.BR YYYY-MM-DD .
 .TP
 .I nuevos.csv
 Registros del CSV no encontrados en gRPC (nuevos beneficiarios).
+Las fechas se emiten en formato
+.BR YYYY-MM-DD .
 .TP
 .I pendientes.csv
 Registros gRPC no existentes en CSV (cedula, nombre, apellidos, sexo,
-m\['a]s campos del mapping).
+m\['a]s campos del mapping). Las fechas se emiten en formato
+.BR YYYY-MM-DD .
 .TP
 .I errores.jsonl
 Diferencias detalladas campo a campo (valor CSV vs. valor gRPC).
+Conserva los valores
+.B raw
+tal como llegan de gRPC (p.ej.
+.IR 2023-07-05T00:00:00Z )
+como traza de diagn\['o]stico; no se normaliza.
 .TP
 .I detalle.txt
 Descripci\['o]n legible de diferencias por c\['e]dula, clasificadas por tipo:
-[GRADO], [N_HIJOS], [FECHAS], [RECONOCIMIENTO], [PROFESION].
+[FECHAS], [GRADOS], [TIEMPO_RECONOCIDO], [FAMILIA], [PROFESION], [OTROS].
+Las fechas se imprimen en formato
+.BR YYYY-MM-DD ,
+id\['e]ntico al de
+.I motivo.campos[]
+y al de la l\['i]nea CSV de origen.
+Los mismos IDs se emiten en el campo
+.I motivo.categorias
+del índice enviado a MongoDB (orden can\['o]nico de la UI).
+Las carpetas
+.IR NUEVO ,
+.IR REINCORPORADOS ,
+.IR PARALIZADOS ,
+.I CAMBIO_COMPONENTE
+y
+.I RETIRADOS
+corresponden a estatus emitidos por
+.I LISTAR_TMP_COMPONENTE
+y no son producidas por el reconciliador.
 .TP
 .I postgres_batch.sql
 Batch UPDATE PostgreSQL con todos los campos de los registros con diferencias.
+Las fechas se emiten como literales
+.BR YYYY-MM-DD .
 .TP
 .I insert_batch.sql
 Batch INSERT PostgreSQL para los registros nuevos (no existen en gRPC).
+Las fechas se emiten como literales
+.BR YYYY-MM-DD .
 .TP
 .I reporte.txt
 M\['e]tricas finales: hits, diferencias, hu\['e]rfanos, hit rate, archivos generados.
+.SH FECHAS
+Todos los artefactos operativos emiten las fechas en formato
+.BR YYYY-MM-DD ,
+igual que la l\['i]nea CSV de origen. Esto incluye el objeto
+.I detalles
+del \['i]ndice persistido en MongoDB, los valores
+.I valor_csv
+y
+.I valor_sssifanb
+de
+.IR motivo.campos[] ,
+el archivo
+.I detalle.txt ,
+los CSV de discrepancias y los scripts SQL. La \['u]nica excepci\['o]n es
+.IR errores.jsonl ,
+que conserva el valor
+.B raw
+de gRPC como traza de diagn\['o]stico.
 .SH EXIT STATUS
 .TP
 .B 0

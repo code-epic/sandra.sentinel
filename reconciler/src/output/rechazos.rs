@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use crate::error::Result;
+use crate::types::{es_campo_fecha, normalizar_fecha};
 
 /// CSV con registros rechazados (PartialMatch).
 /// Headers fijos: cedula + field_names del mapping.
@@ -21,7 +22,11 @@ impl RechazosWriter {
         headers.extend_from_slice(&field_names);
         writeln!(writer, "{}", headers.join(&delimiter.to_string()))?;
 
-        Ok(RechazosWriter { writer, delimiter, field_names })
+        Ok(RechazosWriter {
+            writer,
+            delimiter,
+            field_names,
+        })
     }
 
     pub fn write_record(&mut self, cedula: &str, field_values: &[String]) -> Result<()> {
@@ -29,8 +34,8 @@ impl RechazosWriter {
 
         for (i, val) in field_values.iter().enumerate() {
             let field_name = self.field_names.get(i).map(|s| s.as_str()).unwrap_or("");
-            let formatted = if field_name == "f_ingreso" || field_name == "f_ult_ascenso" {
-                val.split('T').next().unwrap_or(val).to_string()
+            let formatted = if es_campo_fecha(field_name) {
+                normalizar_fecha(val)
             } else {
                 val.clone()
             };
@@ -45,5 +50,36 @@ impl RechazosWriter {
     pub fn flush(&mut self) -> Result<()> {
         self.writer.flush()?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regresión: `fecha_ingreso` también se trunca a `YYYY-MM-DD`
+    /// (antes solo se cubrían `f_ingreso` y `f_ult_ascenso`).
+    #[test]
+    fn test_rechazos_trunca_fecha_ingreso() {
+        let path = std::env::temp_dir().join("reconciler_test_rechazos_fecha_ingreso.csv");
+        let path = path.to_str().unwrap();
+        let mut writer = RechazosWriter::new(
+            path,
+            vec!["grado".to_string(), "fecha_ingreso".to_string()],
+            ';',
+        )
+        .unwrap();
+        writer
+            .write_record(
+                "11439805",
+                &["30".to_string(), "1996-07-05T00:00:00Z".to_string()],
+            )
+            .unwrap();
+        writer.flush().unwrap();
+
+        let content = std::fs::read_to_string(path).unwrap();
+        assert!(content.contains("11439805;30;1996-07-05"));
+        assert!(!content.contains("T00:00:00Z"));
+        let _ = std::fs::remove_file(path);
     }
 }

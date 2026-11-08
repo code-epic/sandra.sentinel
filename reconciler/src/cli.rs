@@ -98,21 +98,21 @@ impl ReconcilerCli {
             None
         };
 
-        if let Some(ref host) = self.pg_host {
-            std::env::set_var("PGHOST", host);
-        }
-        if let Some(ref port) = self.pg_port {
-            std::env::set_var("PGPORT", port);
-        }
-        if let Some(ref user) = self.pg_user {
-            std::env::set_var("PGUSER", user);
-        }
-        if let Some(ref db) = self.pg_database {
-            std::env::set_var("PGDATABASE", db);
-        }
-        if let Some(ref pwd) = self.pg_password {
-            std::env::set_var("PGPASSWORD", pwd);
-        }
+        let pg_host = self.pg_host
+            .or_else(|| std::env::var("PGHOST").ok())
+            .unwrap_or_else(|| "localhost".to_string());
+        let pg_port = self.pg_port
+            .or_else(|| std::env::var("PGPORT").ok())
+            .unwrap_or_else(|| "5432".to_string());
+        let pg_user = self.pg_user
+            .or_else(|| std::env::var("PGUSER").ok())
+            .unwrap_or_else(|| "postgres".to_string());
+        let pg_database = self.pg_database
+            .or_else(|| std::env::var("PGDATABASE").ok())
+            .unwrap_or_else(|| "pace".to_string());
+        let pg_password = self.pg_password
+            .or_else(|| std::env::var("PGPASSWORD").ok())
+            .unwrap_or_else(|| "postgres".to_string());
 
         Ok(ReconcilerConfig {
             csv_path: self.csv_path.to_string_lossy().to_string(),
@@ -128,6 +128,11 @@ impl ReconcilerCli {
             compress: self.compress,
             api_url: self.api_url,
             driver: self.driver,
+            pg_host,
+            pg_port,
+            pg_user,
+            pg_database,
+            pg_password,
         })
     }
 }

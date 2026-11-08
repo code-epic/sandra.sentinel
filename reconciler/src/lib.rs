@@ -221,7 +221,10 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
                         postgres_builder.add(&cedula_raw, vals.clone());
                         rechazos_writer.write_record(&cedula_raw, vals)?;
                         let linea = result.csv_line.as_deref().unwrap_or("");
-                        indice_writer.add(&cedula_norm, "rechazos", linea, vals);
+                        // `estatus` 0 = rechazo (PartialMatch). Se adjunta el
+                        // motivo exacto (categorías + campos) para poder
+                        // filtrar en MongoDB.
+                        indice_writer.add_rechazo(&cedula_norm, linea, vals, &result.diffs);
                     }
                     errores_writer.write(&result)?;
                     detalle_writer.write_record(&result)?;
@@ -272,8 +275,8 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     postgres_builder.write_to_file(&format!("{}/postgres_batch.sql", out_dir))?;
     postgres_insert_builder.write_to_file(&format!("{}/insert_batch.sql", out_dir))?;
     indice_writer.write_to_file(&format!("{}/indice_cedulas.json", out_dir))?;
-    output::staging_script::write_staging_script(out_dir, &config.grpc_parametros, config.delimiter)?;
-    output::staging_script::execute_staging_script(out_dir, &config.grpc_parametros, quiet)?;
+    output::staging_script::write_staging_script(out_dir, &config)?;
+    output::staging_script::execute_staging_script(out_dir, &config, quiet)?;
 
     if config.debug && !debug_records.is_empty() {
         let _ = save_debug_sample(&debug_records, out_dir);
@@ -307,7 +310,15 @@ pub async fn run(config: ReconcilerConfig, quiet: bool) -> Result<()> {
     let pendientes_count = final_metrics.records_not_found_csv;
     let nuevos_count = final_metrics.records_not_found_grpc;
 
-    metrics::write_metrics_report(&format!("{}/reporte.txt", out_dir), &final_metrics, pendientes_count, nuevos_count, config.compress)?;
+    metrics::write_metrics_report(
+        &format!("{}/reporte.txt", out_dir),
+        &final_metrics,
+        pendientes_count,
+        nuevos_count,
+        csv_index.total_lines as u64,
+        total_stream_records as u64,
+        config.compress,
+    )?;
     manifest::write_manifest(
         &format!("{}/manifest.json", out_dir),
         &config,

@@ -17,6 +17,11 @@ pub async fn execute(
     compress: bool,
     api_url: Option<String>,
     driver: String,
+    pg_host: Option<String>,
+    pg_port: Option<String>,
+    pg_user: Option<String>,
+    pg_database: Option<String>,
+    pg_password: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let field_mapping_path = field_mapping.map(PathBuf::from);
 
@@ -35,11 +40,11 @@ pub async fn execute(
         compress,
         api_url,
         driver,
-        pg_host: None,
-        pg_port: None,
-        pg_user: None,
-        pg_database: None,
-        pg_password: None,
+        pg_host,
+        pg_port,
+        pg_user,
+        pg_database,
+        pg_password,
     };
 
     let config = args.into_config()?;

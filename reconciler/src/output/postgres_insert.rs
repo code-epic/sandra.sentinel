@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Write;
 
 use crate::error::Result;
+use crate::types::{es_campo_fecha, normalizar_fecha};
 
 /// Genera batch INSERT PostgreSQL para registros nuevos (existentes en CSV, no en gRPC).
 pub struct PostgresInsertBuilder {
@@ -27,8 +28,15 @@ impl PostgresInsertBuilder {
         }
 
         let mut file = File::create(path)?;
-        writeln!(&mut file, "-- Batch de inserciones generado por Sandra Reconciler")?;
-        writeln!(&mut file, "-- Total registros nuevos: {}", self.inserts.len())?;
+        writeln!(
+            &mut file,
+            "-- Batch de inserciones generado por Sandra Reconciler"
+        )?;
+        writeln!(
+            &mut file,
+            "-- Total registros nuevos: {}",
+            self.inserts.len()
+        )?;
         writeln!(&mut file, "BEGIN;")?;
         writeln!(&mut file)?;
 
@@ -36,7 +44,11 @@ impl PostgresInsertBuilder {
             .chain(self.field_names.iter().cloned())
             .collect();
 
-        writeln!(&mut file, "INSERT INTO beneficiarios ({})", columns.join(", "))?;
+        writeln!(
+            &mut file,
+            "INSERT INTO beneficiarios ({})",
+            columns.join(", ")
+        )?;
         writeln!(&mut file, "VALUES")?;
 
         for (i, (cedula, values)) in self.inserts.iter().enumerate() {
@@ -62,13 +74,17 @@ impl PostgresInsertBuilder {
 }
 
 fn format_postgres_value(val: &str, field_name: &str) -> String {
-    if field_name == "f_ingreso" || field_name == "f_ult_ascenso" || field_name == "fecha_ingreso" {
-        let truncated = val.split('T').next().unwrap_or(val);
-        format!("'{}'", truncated.replace("'", "''"))
+    if es_campo_fecha(field_name) {
+        let normalized = normalizar_fecha(val);
+        format!("'{}'", normalized.replace("'", "''"))
     } else {
         match field_name {
             "grado_id" | "n_hijos" | "anio_reconocido" | "mes_reconocido" | "dia_reconocido" => {
-                if val.trim().is_empty() { "0".to_string() } else { val.to_string() }
+                if val.trim().is_empty() {
+                    "0".to_string()
+                } else {
+                    val.to_string()
+                }
             }
             _ => format!("'{}'", val.replace("'", "''")),
         }

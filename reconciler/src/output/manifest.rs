@@ -143,7 +143,11 @@ pub fn write_manifest(
             .collect()
     };
 
-    let num_fields = metrics.records_processed;
+    let num_fields = config
+        .field_mappings
+        .as_ref()
+        .map(|m| m.len())
+        .unwrap_or(0);
     let mapping_origen = match &config.field_mappings {
         Some(_) => format!("archivo externo ({} campos)", num_fields),
         None => format!("deteccion automatica ({} campos)", num_fields),
@@ -212,6 +216,11 @@ mod tests {
             compress,
             api_url: None,
             driver: "SSSIFANB".to_string(),
+            pg_host: "localhost".to_string(),
+            pg_port: "5432".to_string(),
+            pg_user: "postgres".to_string(),
+            pg_database: "pace".to_string(),
+            pg_password: "postgres".to_string(),
         }
     }
 
